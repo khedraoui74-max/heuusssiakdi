@@ -52,7 +52,12 @@ export function loadKeys() {
 }
 
 export function saveKeys(k: ReturnType<typeof loadKeys>) {
-  localStorage.setItem("heuusssiakdi-keys", JSON.stringify(k));
+  const clean = {
+    groq: k.groq?.trim() || undefined,
+    openrouter: k.openrouter?.trim() || undefined,
+    huggingface: k.huggingface?.trim() || undefined,
+  };
+  localStorage.setItem("heuusssiakdi-keys", JSON.stringify(clean));
 }
 
 function step(kind: TraceKind, label: string, detail: string, status: TraceStep["status"] = "done"): TraceStep {
@@ -381,24 +386,34 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] || c);
 }
 
-async function callFreeModel(provider: string, prompt: string): Promise<string | null> {
+type ModelCall = { text: string | null; error?: string };
+
+async function callFreeModel(provider: string, prompt: string): Promise<ModelCall> {
   const keys = loadKeys();
   try {
-    if (provider === "groq" && keys.groq) {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${keys.groq}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [
-            { role: "system", content: "Assistant technique francophone. Refuse les activités illégales. Produis du code précis." },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.3,
-        }),
-      });
-      const data = await res.json();
-      return data?.choices?.[0]?.message?.content || null;
+    if (provider === "groq") {
+      if (!keys.groq) return { text: null, error: "Aucune clé Groq enregistrée. Ouvre Clés IA, colle gsk_… puis Enregistrer." };
+      const models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"];
+      let last = "";
+      for (const model of models) {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${keys.groq}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: "Assistant francophone utile et précis. Réponds directement. Refuse les activités illégales." },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.4,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const text = data?.choices?.[0]?.message?.content;
+        if (text) return { text };
+        last = data?.error?.message || `HTTP ${res.status}`;
+      }
+      return { text: null, error: `Groq a refusé : ${last}` };
     }
     if (provider === "openrouter" && keys.openrouter) {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -418,7 +433,8 @@ async function callFreeModel(provider: string, prompt: string): Promise<string |
         }),
       });
       const data = await res.json();
-      return data?.choices?.[0]?.message?.content || null;
+      const text = data?.choices?.[0]?.message?.content;
+      return text ? { text } : { text: null, error: data?.error?.message || "OpenRouter sans réponse." };
     }
     if (provider === "hf" && keys.huggingface) {
       const res = await fetch("https://router.huggingface.co/v1/chat/completions", {
@@ -430,12 +446,13 @@ async function callFreeModel(provider: string, prompt: string): Promise<string |
         }),
       });
       const data = await res.json();
-      return data?.choices?.[0]?.message?.content || null;
+      const text = data?.choices?.[0]?.message?.content;
+      return text ? { text } : { text: null, error: data?.error?.message || "Hugging Face sans réponse." };
     }
-  } catch {
-    return null;
+  } catch (e) {
+    return { text: null, error: e instanceof Error ? e.message : "Réseau bloqué vers l’API." };
   }
-  return null;
+  return { text: null, error: "Fournisseur ou clé manquant." };
 }
 
 export async function runEngine(opts: {
@@ -520,9 +537,10 @@ export async function runEngine(opts: {
     onStep?.([...steps]);
   }
 
-  const remote = ["groq", "openrouter", "hf"].includes(model) ? await callFreeModel(model, text) : null;
+  const remoteCall = ["groq", "openrouter", "hf"].includes(model) ? await callFreeModel(model, text) : { text: null as string | null };
+  const remote = remoteCall.text;
   if (["groq", "openrouter", "hf"].includes(model) && !remote) {
-    push(step("model", "Clé absente ou API indisponible", "Repli sur l’atelier local. Ajoutez une clé gratuite dans Outils.", "pending"));
+    push(step("model", "Groq / API indisponible", remoteCall.error || "Repli sur l’atelier local.", "pending"));
   } else if (remote) {
     push(step("model", "Réponse modèle gratuit", "Complétion reçue du fournisseur choisi."));
   }
