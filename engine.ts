@@ -32,7 +32,7 @@ export const FREE_MODELS = [
   { id: "local", label: "Atelier local", hint: "Planificateur + génération hors ligne (toujours disponible)." },
   { id: "qwen27", label: "Qwen 27", hint: "Voie interne rapide." },
   { id: "blockia", label: "BlockIA", hint: "Voie structurée." },
-  { id: "groq", label: "Groq (gratuit avec clé)", hint: "llama-3.1-8b-instant — clé groq.com." },
+  { id: "groq", label: "Groq (gratuit avec clé)", hint: "openai/gpt-oss-20b — clé groq.com." },
   { id: "openrouter", label: "OpenRouter gratuit", hint: "Modèles :free si clé openrouter.ai." },
   { id: "hf", label: "Hugging Face", hint: "Inference Router si jeton hf.co." },
 ] as const;
@@ -393,7 +393,7 @@ async function callFreeModel(provider: string, prompt: string): Promise<ModelCal
   try {
     if (provider === "groq") {
       if (!keys.groq) return { text: null, error: "Aucune clé Groq enregistrée. Ouvre Clés IA, colle gsk_… puis Enregistrer." };
-      const models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"];
+      const models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.1-8b-instant"];
       let last = "";
       for (const model of models) {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
