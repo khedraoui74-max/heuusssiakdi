@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LANGUAGES, load, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
 import { Workspace } from "./workspace";
+import logoImg from "./logo.png";
 
 const NAV: { to: Route; label: string }[] = [
   { to: "/", label: "Conversation" },
@@ -64,7 +65,7 @@ export default function App() {
   return (
     <div className="app">
       <aside className={menu ? "side open" : "side"}>
-        <img src="/logo.png" alt="HeuusssIAKDi" className="logo" style={{ width: 56, height: 56, margin: "0 0 8px" }} />
+        <img src={logoImg} alt="HeuusssIAKDi" className="logo" style={{ width: 56, height: 56, margin: "0 0 8px" }} />
         <h2>HeuusssIAKDi2.0</h2>
         <div className="muted">Intelligence assistée</div>
         <div className="muted">{user.email}</div>
@@ -148,7 +149,7 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
       </label>
       <div className="auth-wrap">
         <div className="card">
-          <img src="/logo.png" className="logo" alt="Logo HeuusssIAKDi — gants de boxe vintage" />
+          <img src={logoImg} className="logo" alt="Logo HeuusssIAKDi — gants de boxe vintage" />
           <div className="brand">HEUUSSSIAKDI2.0</div>
           <h1>Conversation assistée</h1>
           <div className="sub">Historique sécurisé</div>
