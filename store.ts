@@ -10,6 +10,7 @@ export type Route =
   | "/studio-video"
   | "/alertes"
   | "/reseaux"
+  | "/admin"
   | "/partage"
   | "/404";
 
@@ -20,6 +21,7 @@ export type User = {
   password: string;
   role: Role;
   suspended?: boolean;
+  pending?: boolean;
 };
 
 export type Message = { id: string; role: "user" | "assistant"; content: string; at: number };
@@ -119,6 +121,7 @@ const seed: DB = {
       email: "vous@exemple.com",
       password: "Heuusss12",
       role: "master",
+      pending: false,
     },
   ],
   conversations: [],
@@ -175,16 +178,27 @@ export const MODELS = {
 } as const;
 
 export const QUOTES = [
-  { text: "Apprendre sans réfléchir est vain ; réfléchir sans apprendre est dangereux.", source: "Confucius — adaptation d’un passage des Entretiens" },
-  { text: "Celui qui pose une question est ignorant un instant ; celui qui ne pose pas de question reste ignorant toute sa vie.", source: "Confucius — attribution traditionnelle" },
+  { text: "Apprendre sans réfléchir est vain ; réfléchir sans apprendre est dangereux.", source: "Confucius — Entretiens (Lúnyǔ)" },
+  { text: "Celui qui pose une question est ignorant un instant ; celui qui ne pose pas de question reste ignorant longtemps.", source: "Confucius — attribution traditionnelle" },
   { text: "Exige beaucoup de toi-même et attends peu des autres.", source: "Confucius — attribution traditionnelle" },
-  { text: "La vraie connaissance est de connaître l’étendue de son ignorance.", source: "Confucius — adaptation d’un passage des Entretiens" },
-  { text: "Quand l’objectif paraît lointain, ne change pas l’objectif : change l’approche.", source: "孙子兵法 / 孫子兵法 — adaptation inspirée de L’Art de la guerre, Sūn Zǐ" },
-  { text: "La préparation transforme les difficultés en possibilités d’action.", source: "孙子兵法 / 孫子兵法 — adaptation inspirée de L’Art de la guerre, Sūn Zǐ" },
-  { text: "Connaître le terrain, le moment et ses propres forces permet de décider avec mesure.", source: "孙子兵法 / 孫子兵法 — adaptation inspirée de L’Art de la guerre, Sūn Zǐ" },
-  { text: "La meilleure stratégie est celle qui atteint son but avec le moins de conflit possible.", source: "孙子兵法 / 孫子兵法 — adaptation inspirée de L’Art de la guerre, Sūn Zǐ" },
-  { text: "La constance dans les petites actions construit les grands résultats.", source: "Confucius — adaptation d’un passage des Entretiens" },
-  { text: "Agir au bon moment vaut mieux que multiplier les efforts sans direction.", source: "孙子兵法 / 孫子兵法 — adaptation inspirée de L’Art de la guerre, Sūn Zǐ" },
+  { text: "La vraie connaissance est de connaître l’étendue de son ignorance.", source: "Confucius — Entretiens" },
+  { text: "La victoire la plus haute est de vaincre sans combattre.", source: "Sūn Zǐ — L’Art de la guerre" },
+  { text: "Connais l’autre et connais-toi : cent batailles, cent issues." , source: "Sūn Zǐ — L’Art de la guerre" },
+  { text: "Le bon général prépare le terrain avant d’engager la force.", source: "Sūn Zǐ — L’Art de la guerre" },
+  { text: "Agir au bon moment vaut mieux que multiplier les efforts sans direction.", source: "Sūn Zǐ — L’Art de la guerre" },
+  { text: "Allah n’impose à aucune âme une charge supérieure à sa capacité.", source: "Le Coran — sourate 2, Al-Baqara 286 (sens)" },
+  { text: "En vérité, avec la difficulté est une facilité.", source: "Le Coran — sourate 94, Ash-Sharh 5–6 (sens)" },
+  { text: "Dieu est avec ceux qui sont patients.", source: "Le Coran — sourate 2, Al-Baqara 153 (sens)" },
+  { text: "Traite les autres comme tu voudrais qu’on te traite.", source: "La Bible — Matthieu 7,12" },
+  { text: "Que ta parole soit oui, oui ; non, non.", source: "La Bible — Matthieu 5,37" },
+  { text: "La lumière luit dans les ténèbres.", source: "La Bible — Jean 1,5" },
+  { text: "Aime ton prochain comme toi-même.", source: "La Bible — Lévitique 19,18 / Matthieu 22,39" },
+  { text: "Justice, justice tu poursuivras.", source: "La Torah — Deutéronome 16,20" },
+  { text: "Aime l’étranger, car vous avez été étrangers au pays d’Égypte.", source: "La Torah — Deutéronome 10,19" },
+  { text: "Ce n’est pas à toi d’achever la tâche, mais tu n’es pas libre de t’en détourner.", source: "La Torah — Pirkei Avot 2,16 (tradition)" },
+  { text: "La haine ne cesse par la haine ; la haine cesse par l’absence de haine.", source: "Tripitaka — Dhammapada 5" },
+  { text: "Mieux vaut un seul mot de sagesse que mille paroles vides.", source: "Tripitaka — Dhammapada 100" },
+  { text: "Sois une lampe pour toi-même.", source: "Tripitaka — Mahāparinibbāna Sutta" },
 ];
 
 export function quoteOfDay(d = new Date()) {
@@ -213,7 +227,7 @@ export const LANGUAGES = [
 
 export const ACCESS_CATALOG = [
   { name: "Atelier local", kind: "api" as const, url: "", description: "Générateur de programmes et journal de recherche, sans clé." },
-  { name: "Wikipedia", kind: "api" as const, url: "https://fr.wikipedia.org", description: "Recherche claire illustrée à l’écran." },
+  { name: "Web mondial", kind: "api" as const, url: "https://duckduckgo.com", description: "Recherche indexée : Google, Bing, DuckDuckGo, actualités, GitHub." },
   { name: "Groq", kind: "api" as const, url: "https://console.groq.com", description: "Modèles gratuits (clé personnelle, jamais dans le chat)." },
   { name: "OpenRouter", kind: "api" as const, url: "https://openrouter.ai", description: "Catalogue :free (clé personnelle)." },
   { name: "Hugging Face", kind: "api" as const, url: "https://huggingface.co", description: "Inference Router gratuit avec jeton." },

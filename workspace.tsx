@@ -7,6 +7,7 @@ import {
   type Artifact,
   type Conversation,
   type DB,
+  type Role,
   type Route,
   type SocialNet,
   type WorkFile,
@@ -46,6 +47,7 @@ export function Workspace({
   if (route === "/studio-video") return <VideoView db={db} setDb={setDb} flash={flash} />;
   if (route === "/reseaux") return <SocialView db={db} setDb={setDb} flash={flash} />;
   if (route === "/alertes") return <AlertsView db={db} setDb={setDb} flash={flash} />;
+  if (route === "/admin") return <AdminView db={db} setDb={setDb} flash={flash} />;
   if (route === "/partage") return <ShareView db={db} />;
   return <div className="panel">L’espace n’a pas pu être affiché. Vous pouvez réessayer ou revenir à l’accueil.</div>;
 }
@@ -190,7 +192,7 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
                     })
                   }
                 >
-                  {conv.webSearch !== false ? "Recherche claire ON" : "Recherche claire OFF"}
+                  {conv.webSearch !== false ? "Recherche web ON" : "Recherche web OFF"}
                 </button>
                 <button className="chip" onClick={() => setKeysOpen((v) => !v)}>
                   Clés IA
@@ -358,7 +360,7 @@ function Hub({ go, db }: { go: (r: Route) => void; db: DB }) {
     ["Studio vidéo", `${db.videos.length} films`, "Scènes éditables.", "/studio-video"],
     ["Réseaux sociaux", `${(db.socialAccounts || []).length} comptes · ${(db.socialPosts || []).length} envois`, "TikTok, Instagram, YouTube, Facebook, X.", "/reseaux"],
     ["Artefacts", `${db.artifacts.length} pièces`, "Notes, liens, extraits.", "/artefacts"],
-    ["Alertes", `${db.alerts.length} veilles`, "Wikipedia public.", "/alertes"],
+    ["Alertes", `${db.alerts.length} veilles`, "Web mondial.", "/alertes"],
     ["Connecteurs", `${db.connectors.filter((c) => c.active).length} actifs`, "IA gratuites et sites.", "/connecteurs"],
   ];
   return (
@@ -828,7 +830,7 @@ function AlertsView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateActi
   };
   return (
     <div>
-      <PageHead title="Alertes" sub="Veille sur le web public (Wikipedia). Relancez pour rafraîchir les extraits." />
+      <PageHead title="Alertes" sub="Veille sur le web mondial indexé. Relancez pour rafraîchir les extraits." />
       <div className="panel">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l’alerte" />
         <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Mot-clé" />
@@ -1091,6 +1093,50 @@ function ShareView({ db }: { db: DB }) {
       <h3>{project.name}</h3>
       <p className="muted">Lecture seule · jeton {share.token}</p>
       <p>{project.note || "Aucune note."}</p>
+    </div>
+  );
+}
+
+function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
+  const me = db.users.find((u) => u.id === db.sessionId);
+  if (!me || (me.role !== "master" && me.role !== "admin")) {
+    return <div className="panel">Accès réservé aux administrateurs.</div>;
+  }
+  const setUser = (id: string, patch: Partial<(typeof db.users)[0]>) => {
+    setDb({ ...db, users: db.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
+  };
+  return (
+    <div>
+      <PageHead title="Administration" sub="Autoriser, suspendre ou changer le rôle des comptes. Votre profil maître : vous@exemple.com" />
+      <div className="list">
+        {db.users.map((u) => (
+          <div className="panel" key={u.id}>
+            <b>{u.name}</b>
+            <div className="muted">{u.email} · {u.role}{u.pending ? " · en attente" : ""}{u.suspended ? " · suspendu" : ""}</div>
+            <div className="toolbar" style={{ marginTop: 8 }}>
+              {u.pending ? (
+                <button className="btn btn-cyan" onClick={() => { setUser(u.id, { pending: false }); flash("Accès autorisé."); }}>
+                  Autoriser
+                </button>
+              ) : null}
+              {u.role !== "master" ? (
+                <button className="chip" onClick={() => { setUser(u.id, { suspended: !u.suspended }); flash(u.suspended ? "Compte réactivé." : "Compte suspendu."); }}>
+                  {u.suspended ? "Réactiver" : "Suspendre"}
+                </button>
+              ) : null}
+              {me.role === "master" && u.role !== "master" ? (
+                <select
+                  value={u.role}
+                  onChange={(e) => setUser(u.id, { role: e.target.value as Role, pending: false })}
+                >
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
+                </select>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

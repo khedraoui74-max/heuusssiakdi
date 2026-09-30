@@ -72,39 +72,36 @@ function extractTopic(text: string) {
     .trim();
 }
 
-export async function searchClearnet(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
-  const q = query.slice(0, 80) || "intelligence artificielle";
+export async function searchWorldWeb(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
+  const q = query.slice(0, 80) || "recherche";
+  const enc = encodeURIComponent(q);
   const out: { title: string; url: string; snippet: string }[] = [];
   try {
-    const url = `https://fr.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&utf8=1&format=json&origin=*&srlimit=4`;
-    const res = await fetch(url);
+    const res = await fetch(`https://api.duckduckgo.com/?q=${enc}&format=json&no_html=1&skip_disambig=1`);
     const data = await res.json();
-    for (const hit of data?.query?.search ?? []) {
-      out.push({
-        title: hit.title,
-        url: `https://fr.wikipedia.org/wiki/${encodeURIComponent(String(hit.title).replace(/ /g, "_"))}`,
-        snippet: String(hit.snippet || "")
-          .replace(/<[^>]+>/g, "")
-          .slice(0, 220),
-      });
+    if (data?.AbstractText && data?.AbstractURL) {
+      out.push({ title: data.Heading || q, url: data.AbstractURL, snippet: String(data.AbstractText).slice(0, 220) });
+    }
+    for (const hit of data?.RelatedTopics ?? []) {
+      if (hit?.FirstURL && hit?.Text) {
+        out.push({ title: String(hit.Text).slice(0, 90), url: hit.FirstURL, snippet: String(hit.Text).slice(0, 220) });
+      }
+      if (out.length >= 4) break;
     }
   } catch {
-    /* réseau indisponible */
+    /* API indisponible */
   }
-  if (!out.length) {
-    out.push({
-      title: `Recherche claire · ${q}`,
-      url: `https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
-      snippet: "Source de repli : DuckDuckGo (web indexé public).",
-    });
-    out.push({
-      title: `MDN / docs`,
-      url: `https://developer.mozilla.org/fr/search?q=${encodeURIComponent(q)}`,
-      snippet: "Documentation technique publique.",
-    });
-  }
-  return out;
+  for (const portal of [
+    { title: `Google · ${q}`, url: `https://www.google.com/search?q=${enc}`, snippet: "Index web mondial." },
+    { title: `Bing · ${q}`, url: `https://www.bing.com/search?q=${enc}`, snippet: "Index web mondial." },
+    { title: `DuckDuckGo · ${q}`, url: `https://duckduckgo.com/?q=${enc}`, snippet: "Index web mondial." },
+    { title: `Google Actualités · ${q}`, url: `https://news.google.com/search?q=${enc}`, snippet: "Fils d’actualité mondiaux." },
+    { title: `GitHub · ${q}`, url: `https://github.com/search?q=${enc}`, snippet: "Code et dépôts publics." },
+  ]) out.push(portal);
+  return out.slice(0, 8);
 }
+
+export const searchClearnet = searchWorldWeb;
 
 function langFromPath(path: string) {
   if (path.endsWith(".py")) return "python";
@@ -473,7 +470,7 @@ export async function runEngine(opts: {
 
   if (ILLEGAL.test(text)) {
     const blocked =
-      "Demande refusée : pas d’accès dark web, pas de Tor/.onion, pas d’aide à des activités illégales. Utilisez le web indexé public (Wikipedia, documentation officielle, GitHub public).";
+      "Demande refusée : pas d’accès dark web, pas de Tor/.onion. Recherche limitée au web indexé mondial.";
     push({
       id: uid("t"),
       kind: "policy",
@@ -500,13 +497,13 @@ export async function runEngine(opts: {
       "Outils disponibles",
       activeTools.length
         ? `Connecteurs actifs : ${activeTools.join(", ")}.`
-        : "Aucun connecteur actif — atelier local + recherche claire uniquement."
+        : "Aucun connecteur actif — atelier local + recherche web mondial."
     )
   );
 
   let links: { title: string; url: string; snippet: string }[] = [];
   if (webSearch) {
-    const running = step("search", "Recherche claire", `Requête : ${extractTopic(text)}`, "run");
+    const running = step("search", "Recherche web mondial", `Requête : ${extractTopic(text)}`, "run");
     push(running);
     links = await searchClearnet(text);
     running.status = "done";
@@ -553,14 +550,14 @@ export async function runEngine(opts: {
   }));
 
   const sourceBlock = links.length
-    ? "\n\nSources consultées (web public) :\n" + links.map((l) => `• ${l.title} — ${l.url}\n  ${l.snippet}`).join("\n")
+    ? "\n\nSources / portails web mondial :\n" + links.map((l) => `• ${l.title} — ${l.url}\n  ${l.snippet}`).join("\n")
     : "";
 
   const fileBlock = files.length
     ? "\n\nFichiers générés :\n" + files.map((f) => `• ${f.path} (${langFromPath(f.path)})`).join("\n")
     : "";
 
-  const localReply = `Voie ${model}. Travail effectué à l’écran : analyse, ${webSearch ? "recherche claire, " : ""}${
+  const localReply = `Voie ${model}. Travail effectué à l’écran : analyse, ${webSearch ? "recherche web mondial, " : ""}${
     files.length ? "génération de code, " : ""
   }synthèse.
 
@@ -570,9 +567,7 @@ ${
   files.length
     ? "Un prototype a été assemblé (HTML et/ou Python/React) et enregistré dans Créer une application + Artefacts. Ouvrez le panneau Fichiers pour copier le code."
     : "Pas de projet logiciel détecté. Reformulez avec « crée une application … » ou « programme en Python … » pour obtenir des fichiers complets."
-}
-
-Limite assumée : l’atelier exécute des recherches et du code sur le web public. Aucune passerelle Tor, aucun .onion.`;
+}`;
 
   return {
     reply: (remote || localReply) + sourceBlock + fileBlock,
