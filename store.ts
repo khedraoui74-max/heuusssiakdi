@@ -7,6 +7,7 @@ export type Route =
   | "/creer-application"
   | "/ia-personnelle"
   | "/historique"
+  | "/projets"
   | "/studio-video"
   | "/alertes"
   | "/reseaux"

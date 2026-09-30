@@ -41,6 +41,7 @@ export function Workspace({
   if (route === "/") return <ChatView db={db} setDb={setDb} flash={flash} />;
   if (route === "/ia-personnelle") return <Hub go={go} db={db} />;
   if (route === "/historique") return <HistoryView db={db} setDb={setDb} flash={flash} go={go} />;
+  if (route === "/projets") return <ProjectsView db={db} setDb={setDb} flash={flash} />;
   if (route === "/artefacts") return <ArtifactsView db={db} setDb={setDb} flash={flash} />;
   if (route === "/connecteurs") return <ConnectorsView db={db} setDb={setDb} flash={flash} />;
   if (route === "/creer-application") return <BuilderView db={db} setDb={setDb} flash={flash} />;
@@ -72,7 +73,6 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
   const [cid, setCid] = useState(db.conversations.find((c) => !c.archived)?.id);
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
   const [busy, setBusy] = useState(false);
   const [liveTrace, setLiveTrace] = useState<TraceStep[]>([]);
   const [fileOpen, setFileOpen] = useState<WorkFile | null>(null);
@@ -80,7 +80,7 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
   const [keysOpen, setKeysOpen] = useState(false);
   const [keys, setKeys] = useState(loadKeys);
   const conv = db.conversations.find((c) => c.id === cid) ?? db.conversations.find((c) => !c.archived);
-  const list = db.conversations.filter((c) => (showArchived || !c.archived) && c.title.toLowerCase().includes(q.toLowerCase()));
+  const list = db.conversations.filter((c) => !c.archived && c.title.toLowerCase().includes(q.toLowerCase()));
   const trace = liveTrace.length ? liveTrace : conv?.trace ?? [];
   const files = conv?.files ?? [];
   const html = useMemo(() => previewHtml(files), [files]);
@@ -161,9 +161,6 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
               Nouvelle conversation
             </button>
             <input className="field" style={{ maxWidth: 200 }} placeholder="Rechercher" value={q} onChange={(e) => setQ(e.target.value)} />
-            <label className="muted">
-              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Archives
-            </label>
             {conv && (
               <>
                 <select
@@ -245,7 +242,7 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
               <div className="panel">
                 <h3>Atelier conversation + programmes</h3>
                 <p className="muted">
-                  Décrivez l’application. Le journal, le code et l’aperçu s’affichent à droite. Tor n’est pas prévu : recherche claire uniquement.
+                  Décrivez l’application. Le journal, le code et l’aperçu s’affichent à droite. Archives dans Historique, lots complets dans Projets.
                 </p>
                 <div className="toolbar">
                   {APP_TEMPLATES.map((t) => (
@@ -355,7 +352,8 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
 function Hub({ go, db }: { go: (r: Route) => void; db: DB }) {
   const cards: [string, string, string, Route][] = [
     ["Conversation", `${db.conversations.filter((c) => !c.archived).length} fils`, "Journal, code, aperçu.", "/"],
-    ["Projets", `${db.projects.length} projets · ${db.requests.length} demandes`, "Historique et partages.", "/historique"],
+    ["Projets", `${db.projects.length} projets`, "Pack code, artefacts, clés, connecteurs.", "/projets"],
+    ["Historique", `${db.requests.length} demandes`, "Conversations archivées et partages.", "/historique"],
     ["Applications", `${db.apps.length} prototypes`, "Modèles + aperçu live.", "/creer-application"],
     ["Studio vidéo", `${db.videos.length} films`, "Scènes éditables.", "/studio-video"],
     ["Réseaux sociaux", `${(db.socialAccounts || []).length} comptes · ${(db.socialPosts || []).length} envois`, "TikTok, Instagram, YouTube, Facebook, X.", "/reseaux"],
@@ -395,10 +393,34 @@ function HistoryView({ db, setDb, flash, go }: { db: DB; setDb: Dispatch<SetStat
   const shown = db.requests.filter((r) => filter === "toutes" || r.status === filter);
   return (
     <div>
-      <PageHead title="Historique" sub="Projets, demandes du chat et liens de lecture seule." />
+      <PageHead title="Historique" sub="Conversations archivées, demandes et liens de lecture. Les packs complets sont dans Projets." />
       <div className="grid">
         <div className="panel">
-          <h3>Nouveau projet</h3>
+          <h3>Conversations archivées</h3>
+          <div className="list">
+            {db.conversations.filter((c) => c.archived).map((c) => (
+              <div className="item" key={c.id}>
+                <div>
+                  <b>{c.title}</b>
+                  <div className="muted">{c.messages.length} message(s)</div>
+                </div>
+                <button
+                  className="chip"
+                  onClick={() => {
+                    setDb({ ...db, conversations: db.conversations.map((x) => (x.id === c.id ? { ...x, archived: false } : x)) });
+                    flash("Conversation rétablie dans le chat.");
+                    go("/");
+                  }}
+                >
+                  Restaurer
+                </button>
+              </div>
+            ))}
+            {!db.conversations.some((c) => c.archived) && <div className="muted">Aucune archive. Utilisez Archiver dans le chat.</div>}
+          </div>
+        </div>
+        <div className="panel">
+          <h3>Nouveau projet (raccourci)</h3>
           <label>Nom</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du projet" />
           <label>Note</label>
@@ -1124,7 +1146,7 @@ function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateActio
                   {u.suspended ? "Réactiver" : "Suspendre"}
                 </button>
               ) : null}
-              {me.role === "master" && u.role !== "master" ? (
+              {me.role === "master" && u.id !== me.id && u.role !== "master" ? (
                 <select
                   value={u.role}
                   onChange={(e) => setUser(u.id, { role: e.target.value as Role, pending: false })}
@@ -1133,6 +1155,151 @@ function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateActio
                   <option value="admin">admin</option>
                 </select>
               ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ProjectsView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
+  const [name, setName] = useState("");
+  const [note, setNote] = useState("");
+  const [pid, setPid] = useState(db.projects[0]?.id || "");
+  const [withKeys, setWithKeys] = useState(false);
+  const project = db.projects.find((p) => p.id === pid) || db.projects[0];
+
+  const packOf = (p = project) => {
+    if (!p) return null;
+    const conversations = db.conversations.filter((c) => c.projectId === p.id);
+    const apps = db.apps.filter((a) => conversations.some((c) => (c.files || []).some((f) => (a.files || []).includes(f.path))) || true);
+    return {
+      kind: "heuusssiakdi-pack",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      project: p,
+      conversations: db.conversations.filter((c) => !p || c.projectId === p.id || conversations.length === 0),
+      apps: db.apps,
+      artifacts: db.artifacts,
+      connectors: db.connectors,
+      keys: withKeys ? loadKeys() : undefined,
+    };
+  };
+
+  const exportPack = () => {
+    const pack = packOf();
+    if (!pack) return flash("Créez d’abord un projet.");
+    downloadJson(`${(project?.name || "projet").replace(/\s+/g, "-")}.heuusss.json`, pack);
+    flash("Pack téléchargé (code, artefacts, connecteurs" + (withKeys ? ", clés" : "") + ").");
+  };
+
+  const sendPack = async () => {
+    const pack = packOf();
+    if (!pack) return flash("Créez d’abord un projet.");
+    const text = JSON.stringify(pack, null, 2);
+    try {
+      if (navigator.share) {
+        const file = new File([text], `${project?.name || "projet"}.heuusss.json`, { type: "application/json" });
+        await navigator.share({ title: project?.name, files: [file], text: project?.name });
+        flash("Partage ouvert.");
+        return;
+      }
+    } catch {
+      /* repli */
+    }
+    await navigator.clipboard?.writeText(text);
+    downloadJson(`${(project?.name || "projet").replace(/\s+/g, "-")}.heuusss.json`, pack);
+    flash("Pack copié et téléchargé — envoyez le fichier .json.");
+  };
+
+  return (
+    <div>
+      <PageHead title="Projets" sub="Enregistrer ou envoyer le lot : conversations, code, artefacts, connecteurs et, si vous le cochez, les clés IA." />
+      <div className="grid">
+        <div className="panel">
+          <h3>Nouveau projet</h3>
+          <label>Nom</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du projet" />
+          <label>Note</label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Objectif, contraintes…" />
+          <button
+            className="btn btn-cyan"
+            onClick={() => {
+              if (!name.trim()) return flash("Ajoutez un nom.");
+              const created = { id: uid("p"), name: name.trim(), note: note.trim() };
+              setDb({ ...db, projects: [created, ...db.projects] });
+              setPid(created.id);
+              setName("");
+              setNote("");
+              flash("Projet créé.");
+            }}
+          >
+            Créer
+          </button>
+        </div>
+        <div className="panel">
+          <h3>Pack à enregistrer / envoyer</h3>
+          <label>Projet</label>
+          <select className="field" value={project?.id || ""} onChange={(e) => setPid(e.target.value)}>
+            {db.projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <label className="muted">
+            <input type="checkbox" checked={withKeys} onChange={(e) => setWithKeys(e.target.checked)} /> Inclure les clés IA (fichier privé, ne pas publier)
+          </label>
+          <div className="toolbar">
+            <button className="btn btn-cyan" onClick={exportPack}>Enregistrer le pack</button>
+            <button className="btn btn-ghost" onClick={() => void sendPack()}>Envoyer le pack</button>
+          </div>
+          <p className="muted">Le fichier .heuusss.json contient le projet, le code généré, les artefacts et les connecteurs.</p>
+          <label>Importer un pack</label>
+          <input
+            type="file"
+            accept=".json,.heuusss.json,application/json"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                const pack = JSON.parse(await file.text());
+                if (pack?.kind !== "heuusssiakdi-pack") return flash("Fichier non reconnu.");
+                setDb({
+                  ...db,
+                  projects: pack.project ? [pack.project, ...db.projects.filter((p) => p.id !== pack.project.id)] : db.projects,
+                  conversations: [...(pack.conversations || []), ...db.conversations],
+                  apps: [...(pack.apps || []), ...db.apps],
+                  artifacts: [...(pack.artifacts || []), ...db.artifacts],
+                  connectors: [...(pack.connectors || []), ...db.connectors],
+                });
+                if (pack.keys) saveKeys({ ...loadKeys(), ...pack.keys });
+                flash("Pack importé.");
+              } catch {
+                flash("Import impossible.");
+              }
+            }}
+          />
+        </div>
+      </div>
+      <div className="list" style={{ marginTop: 12 }}>
+        {db.projects.map((p) => (
+          <div className="panel" key={p.id}>
+            <b>{p.name}</b>
+            <div className="muted">{p.note || "Sans note."}</div>
+            <div className="toolbar">
+              <button className="chip" onClick={() => { setPid(p.id); exportPack(); }}>Enregistrer</button>
+              <button className="danger" onClick={() => setDb({ ...db, projects: db.projects.filter((x) => x.id !== p.id) })}>Retirer</button>
             </div>
           </div>
         ))}

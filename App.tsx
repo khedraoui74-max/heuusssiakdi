@@ -7,6 +7,7 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/", label: "Conversation" },
   { to: "/ia-personnelle", label: "IA personnelle" },
   { to: "/historique", label: "Historique" },
+  { to: "/projets", label: "Projets" },
   { to: "/artefacts", label: "Artefacts" },
   { to: "/connecteurs", label: "Connecteurs" },
   { to: "/creer-application", label: "Créer une application" },
