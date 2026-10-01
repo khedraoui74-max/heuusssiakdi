@@ -7,6 +7,7 @@ export type Route =
   | "/creer-application"
   | "/ia-personnelle"
   | "/historique"
+  | "/projets"
   | "/studio-video"
   | "/alertes"
   | "/reseaux"
@@ -113,13 +114,15 @@ export function resetDB(): DB {
   return JSON.parse(JSON.stringify(seed)) as DB;
 }
 
+export const PRIORITY_ADMIN = "drive.ia01@outlook.com";
+
 const seed: DB = {
   users: [
     {
       id: "master-1",
-      name: "Propriétaire",
-      email: "vous@exemple.com",
-      password: "Heuusss12",
+      name: "Administratrice",
+      email: PRIORITY_ADMIN,
+      password: "Heuusss01$",
       role: "master",
       pending: false,
     },
@@ -145,9 +148,20 @@ export function load(): DB {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(seed);
     const parsed = JSON.parse(raw);
+    const only = {
+      id: "master-1",
+      name: "Administratrice",
+      email: PRIORITY_ADMIN,
+      password: "Heuusss01$",
+      role: "master" as const,
+      pending: false,
+      suspended: false,
+    };
     return {
       ...structuredClone(seed),
       ...parsed,
+      users: [only],
+      sessionId: parsed.sessionId === "master-1" ? "master-1" : undefined,
       socialAccounts: parsed.socialAccounts ?? [],
       socialPosts: parsed.socialPosts ?? [],
     };

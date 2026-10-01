@@ -7,12 +7,14 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/", label: "Conversation" },
   { to: "/ia-personnelle", label: "IA personnelle" },
   { to: "/historique", label: "Historique" },
+  { to: "/projets", label: "Projets" },
   { to: "/artefacts", label: "Artefacts" },
   { to: "/connecteurs", label: "Connecteurs" },
   { to: "/creer-application", label: "Créer une application" },
   { to: "/studio-video", label: "Studio vidéo" },
   { to: "/reseaux", label: "Réseaux sociaux" },
   { to: "/alertes", label: "Alertes" },
+  { to: "/admin", label: "Administration" },
 ];
 
 function pathToRoute(p: string): Route {
@@ -69,9 +71,9 @@ export default function App() {
         <h2>HeuusssIAKDi2.0</h2>
         <div className="muted">Intelligence assistée</div>
         <div className="muted">{user.email}</div>
-        <div className="muted">Compte {user.role === "master" ? "maître" : "sécurisé"}</div>
+        <div className="muted">Compte {user.email === "drive.ia01@outlook.com" ? "prioritaire · admin · coordinatrice" : user.role === "master" ? "maître" : user.role === "admin" ? "admin" : "sécurisé"}</div>
         <nav className="nav">
-          {NAV.map((n) => (
+          {NAV.filter((n) => n.to !== "/admin" || user.role === "master" || user.role === "admin").map((n) => (
             <button key={n.to} className={route === n.to ? "on" : ""} onClick={() => go(n.to)}>
               {n.label}
             </button>
@@ -126,12 +128,15 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
     if (mode === "register") {
       if (!validPassword(password)) { setErr("Utilisez au moins 10 caractères avec une lettre et un chiffre."); return; }
       if (db.users.some((u) => u.email === mail)) { setErr("Un compte existe déjà."); return; }
-      const user = { id: uid("u"), name: name || mail.split("@")[0], email: mail, password, role: "user" as const };
-      setDb({ ...db, users: [...db.users, user], sessionId: user.id });
+      const user = { id: uid("u"), name: name || mail.split("@")[0], email: mail, password, role: "user" as const, pending: true };
+      setDb({ ...db, users: [...db.users, user] });
+      flash("Compte créé. Un administrateur doit autoriser l’accès avant connexion.");
+      setMode("login");
       return;
     }
     const found = db.users.find((u) => u.email === mail && u.password === password);
     if (!found || found.suspended) { setErr("Identifiants invalides ou compte suspendu."); return; }
+    if (found.pending) { setErr("Compte en attente d’autorisation administrateur."); return; }
     setDb({ ...db, sessionId: found.id });
   };
 
@@ -161,7 +166,7 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
           )}
           {mode === "register" && (<><label>Nom</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Votre nom" /></>)}
           <label>Adresse e-mail</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="drive.ia01@outlook.com" />
           {mode !== "forgot" && (
             <>
               <label>Mot de passe</label>
@@ -176,7 +181,7 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
           {mode === "login" && <button className="link" onClick={() => setMode("forgot")}>Mot de passe oublié ?</button>}
           {mode === "forgot" && <button className="link" onClick={() => setMode("login")}>Retour à la connexion</button>}
           <div className="or">ou</div>
-          <button className="btn btn-ghost" onClick={() => { const master = db.users.find((u) => u.role === "master") ?? db.users[0]; setDb({ ...db, sessionId: master.id }); }}>Utiliser Manus</button>
+          <button className="btn btn-ghost" onClick={() => { const master = db.users.find((u) => u.email === "drive.ia01@outlook.com") ?? db.users.find((u) => u.role === "master") ?? db.users[0]; setDb({ ...db, sessionId: master.id }); }}>Entrer comme coordinatrice</button>
           <button
             className="link"
             onClick={() => {
