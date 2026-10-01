@@ -75,9 +75,18 @@ function extractTopic(text: string) {
 export async function searchWorldWeb(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
   const q = query.slice(0, 80) || "recherche";
   const enc = encodeURIComponent(q);
+  const portals = [
+    { title: `Google · ${q}`, url: `https://www.google.com/search?q=${enc}`, snippet: "Index web mondial." },
+    { title: `Bing · ${q}`, url: `https://www.bing.com/search?q=${enc}`, snippet: "Index web mondial." },
+    { title: `DuckDuckGo · ${q}`, url: `https://duckduckgo.com/?q=${enc}`, snippet: "Index web mondial." },
+    { title: `Google Actualités · ${q}`, url: `https://news.google.com/search?q=${enc}`, snippet: "Fils d’actualité mondiaux." },
+    { title: `GitHub · ${q}`, url: `https://github.com/search?q=${enc}`, snippet: "Code et dépôts publics." },
+  ];
   const out: { title: string; url: string; snippet: string }[] = [];
   try {
-    const res = await fetch(`https://api.duckduckgo.com/?q=${enc}&format=json&no_html=1&skip_disambig=1`);
+    const res = await fetch(`https://api.duckduckgo.com/?q=${enc}&format=json&no_html=1&skip_disambig=1`, {
+      signal: AbortSignal.timeout(3500),
+    });
     const data = await res.json();
     if (data?.AbstractText && data?.AbstractURL) {
       out.push({ title: data.Heading || q, url: data.AbstractURL, snippet: String(data.AbstractText).slice(0, 220) });
@@ -86,19 +95,12 @@ export async function searchWorldWeb(query: string): Promise<{ title: string; ur
       if (hit?.FirstURL && hit?.Text) {
         out.push({ title: String(hit.Text).slice(0, 90), url: hit.FirstURL, snippet: String(hit.Text).slice(0, 220) });
       }
-      if (out.length >= 4) break;
+      if (out.length >= 3) break;
     }
   } catch {
-    /* API indisponible */
+    /* API lente ou bloquée : les portails suffisent */
   }
-  for (const portal of [
-    { title: `Google · ${q}`, url: `https://www.google.com/search?q=${enc}`, snippet: "Index web mondial." },
-    { title: `Bing · ${q}`, url: `https://www.bing.com/search?q=${enc}`, snippet: "Index web mondial." },
-    { title: `DuckDuckGo · ${q}`, url: `https://duckduckgo.com/?q=${enc}`, snippet: "Index web mondial." },
-    { title: `Google Actualités · ${q}`, url: `https://news.google.com/search?q=${enc}`, snippet: "Fils d’actualité mondiaux." },
-    { title: `GitHub · ${q}`, url: `https://github.com/search?q=${enc}`, snippet: "Code et dépôts publics." },
-  ]) out.push(portal);
-  return out.slice(0, 8);
+  return [...out, ...portals].slice(0, 8);
 }
 
 export const searchClearnet = searchWorldWeb;
@@ -396,6 +398,7 @@ async function callFreeModel(provider: string, prompt: string): Promise<ModelCal
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${keys.groq}`, "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(20000),
           body: JSON.stringify({
             model,
             messages: [
@@ -505,7 +508,20 @@ export async function runEngine(opts: {
   if (webSearch) {
     const running = step("search", "Recherche web mondial", `Requête : ${extractTopic(text)}`, "run");
     push(running);
-    links = await searchClearnet(text);
+    links = await Promise.race([
+      searchClearnet(text),
+      new Promise<{ title: string; url: string; snippet: string }[]>((resolve) =>
+        setTimeout(() => {
+          const q = extractTopic(text).slice(0, 80) || "recherche";
+          const enc = encodeURIComponent(q);
+          resolve([
+            { title: `Google · ${q}`, url: `https://www.google.com/search?q=${enc}`, snippet: "Index web mondial (repli, API trop lente)." },
+            { title: `Bing · ${q}`, url: `https://www.bing.com/search?q=${enc}`, snippet: "Index web mondial." },
+            { title: `DuckDuckGo · ${q}`, url: `https://duckduckgo.com/?q=${enc}`, snippet: "Index web mondial." },
+          ]);
+        }, 4500)
+      ),
+    ]);
     running.status = "done";
     running.detail = `${links.length} source(s) publiques.`;
     running.links = links.map(({ title, url }) => ({ title, url }));
