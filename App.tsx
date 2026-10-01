@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LANGUAGES, load, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
+import { LANGUAGES, load, quoteInApp, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
 import { Workspace } from "./workspace";
 import logoImg from "./logo.png";
 
@@ -50,6 +50,7 @@ export default function App() {
 
   const user = db.users.find((u) => u.id === db.sessionId);
   const quote = quoteOfDay();
+  const quoteApp = quoteInApp();
 
   if (!user) {
     return (
@@ -81,6 +82,9 @@ export default function App() {
           <button onClick={() => { setDb({ ...db, sessionId: undefined }); go("/"); }}>Se déconnecter</button>
         </nav>
         <div className="side-meta">
+          <div className="muted">Pensée du jour</div>
+          <div className="muted">« {quoteApp.text} »</div>
+          <div className="muted">{quoteApp.source}</div>
           <div className="muted">{db.conversations.filter((c) => !c.archived).length} conversations</div>
           <div className="muted">{db.apps.length} applications</div>
           <div className="muted">{db.connectors.filter((c) => c.active).length} accès actifs</div>
@@ -98,6 +102,10 @@ export default function App() {
         <div className="mobile-bar">
           <button className="btn btn-ghost" style={{ width: "auto", margin: 0 }} onClick={() => setMenu((v) => !v)}>Menu</button>
           <b>HeuusssIAKDi2.0</b>
+        </div>
+        <div className="top-quote">
+          <b>Dicton du jour</b> — « {quoteApp.text} »
+          <div><small>{quoteApp.source}</small></div>
         </div>
         <Workspace route={route} db={db} setDb={setDb} flash={flash} go={go} />
       </main>
@@ -180,8 +188,6 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
           <button className="btn btn-cyan" onClick={submit}>{mode === "forgot" ? "Envoyer le lien" : mode === "register" ? "Créer un compte" : "Se connecter"}</button>
           {mode === "login" && <button className="link" onClick={() => setMode("forgot")}>Mot de passe oublié ?</button>}
           {mode === "forgot" && <button className="link" onClick={() => setMode("login")}>Retour à la connexion</button>}
-          <div className="or">ou</div>
-          <button className="btn btn-ghost" onClick={() => { const master = db.users.find((u) => u.email === "drive.ia01@outlook.com") ?? db.users.find((u) => u.role === "master") ?? db.users[0]; setDb({ ...db, sessionId: master.id }); }}>Entrer comme coordinatrice</button>
           <button
             className="link"
             onClick={() => {
