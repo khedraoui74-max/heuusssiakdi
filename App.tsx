@@ -52,6 +52,15 @@ export default function App() {
   const quote = quoteOfDay();
   const quoteApp = quoteInApp();
 
+  if (db.locked) {
+    return (
+      <>
+        <LockView db={db} setDb={setDb} flash={flash} quote={quote} />
+        {toast ? <div className="toast">{toast}</div> : null}
+      </>
+    );
+  }
+
   if (!user) {
     return (
       <>
@@ -80,6 +89,18 @@ export default function App() {
             </button>
           ))}
           <button onClick={() => { setDb({ ...db, sessionId: undefined }); go("/"); }}>Se déconnecter</button>
+          {(user.role === "master" || user.role === "admin") && (
+            <button
+              className="danger"
+              onClick={() => {
+                if (!window.confirm("Verrouiller l’application ? Personne ne pourra entrer tant que le compte maître n’aura pas rouvert.")) return;
+                setDb({ ...db, locked: true, sessionId: undefined });
+                flash("Application verrouillée.");
+              }}
+            >
+              Verrouiller
+            </button>
+          )}
         </nav>
         <div className="side-meta">
           <div className="muted">Pensée du jour</div>
@@ -110,6 +131,44 @@ export default function App() {
         <Workspace route={route} db={db} setDb={setDb} flash={flash} go={go} />
       </main>
       {toast ? <div className="toast">{toast}</div> : null}
+    </div>
+  );
+}
+
+function LockView({ db, setDb, flash, quote }: { db: DB; setDb: (d: DB) => void; flash: (s: string) => void; quote: { text: string; source: string } }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const unlock = () => {
+    const mail = email.trim().toLowerCase();
+    const found = db.users.find((u) => u.email === mail && u.password === password && u.role === "master" && !u.suspended);
+    if (!found) {
+      setErr("Seul le compte maître peut rouvrir l’application.");
+      return;
+    }
+    setDb({ ...db, locked: false, sessionId: found.id });
+    flash("Application rouverte.");
+  };
+  return (
+    <div className="page">
+      <div className="top-quote">
+        <b>Pensée du jour</b> — « {quote.text} »
+        <div><small>{quote.source}</small></div>
+      </div>
+      <div className="auth-wrap">
+        <div className="card">
+          <img src={logoImg} className="logo" alt="Logo HeuusssIAKDi" />
+          <div className="brand">ACCÈS BLOQUÉ</div>
+          <h1>Application verrouillée</h1>
+          <div className="sub">Aucune connexion n’est acceptée. Seul le compte maître peut rouvrir.</div>
+          <label>E-mail maître</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" />
+          <label>Mot de passe maître</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          {err ? <div className="err">{err}</div> : null}
+          <button className="btn btn-cyan" onClick={unlock}>Rouvrir</button>
+        </div>
+      </div>
     </div>
   );
 }

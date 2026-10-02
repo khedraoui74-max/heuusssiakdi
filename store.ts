@@ -105,6 +105,7 @@ export type DB = {
   socialAccounts: SocialAccount[];
   socialPosts: SocialPost[];
   language: string;
+  locked?: boolean;
   resetTokens: { email: string; token: string; exp: number }[];
 };
 
