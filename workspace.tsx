@@ -99,7 +99,7 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
     const seeded = {
       ...current,
       title: current.messages.length ? current.title : body.slice(0, 42),
-      webSearch: current.webSearch !== false,
+      webSearch: true,
       messages: [...current.messages, userMsg, thinking],
       trace: [],
     };
@@ -117,7 +117,7 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
       const result = await runEngine({
         text: body,
         model: current.model || "local",
-        webSearch: current.webSearch !== false,
+        webSearch: true,
         connectors: db.connectors,
         onStep: setLiveTrace,
       });
@@ -180,17 +180,6 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
                     </option>
                   ))}
                 </select>
-                <button
-                  className="chip"
-                  onClick={() =>
-                    setDb({
-                      ...db,
-                      conversations: db.conversations.map((c) => (c.id === conv.id ? { ...c, webSearch: !c.webSearch } : c)),
-                    })
-                  }
-                >
-                  {conv.webSearch !== false ? "Recherche web ON" : "Recherche web OFF"}
-                </button>
                 <button className="chip" onClick={() => setKeysOpen((v) => !v)}>
                   Clés IA
                 </button>
@@ -1129,7 +1118,7 @@ function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateActio
   };
   return (
     <div>
-      <PageHead title="Administration" sub="Autoriser, suspendre ou changer le rôle des comptes. Votre profil maître : vous@exemple.com" />
+      <PageHead title="Administration" sub="Seul compte : drive.ia01@outlook.com — administration et coordination." />
       <div className="list">
         {db.users.map((u) => (
           <div className="panel" key={u.id}>
