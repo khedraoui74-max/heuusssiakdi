@@ -33,6 +33,13 @@ export default function App() {
 
   useEffect(() => save(db), [db]);
   useEffect(() => {
+    const icon = document.querySelector<HTMLLinkElement>("link[rel='icon']") || document.createElement("link");
+    icon.rel = "icon";
+    icon.type = "image/png";
+    icon.href = logoImg;
+    if (!icon.parentElement) document.head.appendChild(icon);
+  }, []);
+  useEffect(() => {
     const onPop = () => setRoute(pathToRoute(location.pathname));
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
