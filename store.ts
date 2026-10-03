@@ -40,7 +40,7 @@ export type Conversation = {
   title: string;
   archived?: boolean;
   projectId?: string;
-  model: string;
+  model: "qwen27" | "blockia" | "openrouter" | "local" | "groq" | "hf";
   webSearch?: boolean;
   messages: Message[];
   trace?: TraceStep[];
@@ -105,7 +105,6 @@ export type DB = {
   socialAccounts: SocialAccount[];
   socialPosts: SocialPost[];
   language: string;
-  locked?: boolean;
   resetTokens: { email: string; token: string; exp: number }[];
 };
 
@@ -222,14 +221,6 @@ export function quoteOfDay(d = new Date()) {
   return QUOTES[day % QUOTES.length];
 }
 
-export function quoteInApp(d = new Date()) {
-  const start = Date.UTC(d.getUTCFullYear(), 0, 0);
-  const day = Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - start) / 86400000);
-  const login = QUOTES[day % QUOTES.length];
-  const other = QUOTES.find((q, i) => i !== day % QUOTES.length && q.source.split("—")[0].trim() !== login.source.split("—")[0].trim());
-  return other || QUOTES[(day + 7) % QUOTES.length];
-}
-
 export const LANGUAGES = [
   { code: "fr", label: "Français", nativeName: "Français" },
   { code: "en", label: "English", nativeName: "English" },
@@ -255,6 +246,7 @@ export const ACCESS_CATALOG = [
   { name: "OpenRouter", kind: "api" as const, url: "https://openrouter.ai", description: "Catalogue :free (clé personnelle)." },
   { name: "Hugging Face", kind: "api" as const, url: "https://huggingface.co", description: "Inference Router gratuit avec jeton." },
   { name: "GitHub", kind: "app" as const, url: "https://github.com", description: "Dépôts publics et allowlist." },
+  { name: "Manus", kind: "app" as const, url: "https://manus.im", description: "Connexion et hébergement d’espace." },
   { name: "Vercel", kind: "app" as const, url: "https://vercel.com", description: "Publication de l’application." },
   { name: "Netlify", kind: "app" as const, url: "https://netlify.com", description: "Publication alternative." },
   { name: "Notion", kind: "app" as const, url: "https://notion.so", description: "Notes et bases comme documents de référence." },
