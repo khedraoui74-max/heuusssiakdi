@@ -51,6 +51,7 @@ export function Workspace({
   if (route === "/reseaux") return <SocialView db={db} setDb={setDb} flash={flash} />;
   if (route === "/alertes") return <AlertsView db={db} setDb={setDb} flash={flash} />;
   if (route === "/admin") return <AdminView db={db} setDb={setDb} flash={flash} />;
+  if (route === "/sav") return <SavView db={db} setDb={setDb} flash={flash} />;
   if (route === "/partage") return <ShareView db={db} />;
   return <div className="panel">L’espace n’a pas pu être affiché. Vous pouvez réessayer ou revenir à l’accueil.</div>;
 }
@@ -1152,22 +1153,116 @@ function ShareView({ db }: { db: DB }) {
   );
 }
 
+function SavView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
+  const me = db.users.find((u) => u.id === db.sessionId);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const tickets = db.tickets || [];
+  const mine = me?.role === "master" || me?.role === "admin" ? tickets : tickets.filter((t) => t.email === me?.email);
+  return (
+    <div>
+      <PageHead title="SAV" sub="Signalez un problème de l’application. Le message part vers drive.ia01@outlook.com et reste dans Administration." />
+      <div className="panel">
+        <label>Sujet</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ce qui ne marche pas" />
+        <label>Problème</label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Décrivez l’écran, le bouton et ce que vous attendiez." />
+        <button
+          className="btn btn-cyan"
+          onClick={() => {
+            if (!title.trim() || !body.trim()) return flash("Sujet et description requis.");
+            const ticket = { id: uid("sav"), email: me?.email || "inconnu", title: title.trim(), body: body.trim(), at: Date.now(), status: "ouvert" as const };
+            setDb({ ...db, tickets: [ticket, ...tickets] });
+            const text = `SAV HeuusssIAKDi\nDe : ${ticket.email}\n${ticket.title}\n\n${ticket.body}`;
+            location.href = `mailto:drive.ia01@outlook.com?subject=${encodeURIComponent("SAV " + ticket.title)}&body=${encodeURIComponent(text)}`;
+            flash("Problème enregistré. Le mail SAV s’ouvre.");
+            setTitle("");
+            setBody("");
+          }}
+        >
+          Envoyer au SAV
+        </button>
+      </div>
+      <div className="list" style={{ marginTop: 12 }}>
+        {mine.map((t) => (
+          <div className="panel" key={t.id}>
+            <b>{t.title}</b>
+            <div className="muted">{t.email} · {new Date(t.at).toLocaleString()} · {t.status}</div>
+            <p>{t.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
   const me = db.users.find((u) => u.id === db.sessionId);
+  const [mail, setMail] = useState("");
+  const [pass, setPass] = useState("");
+  const [days, setDays] = useState("30");
+  const [mods, setMods] = useState<string[]>(["/", "/projets"]);
+  const choices = ["/", "/historique", "/projets", "/creer-application", "/reseaux", "/alertes", "/studio-video"];
   if (!me || (me.role !== "master" && me.role !== "admin")) {
     return <div className="panel">Accès réservé aux administrateurs.</div>;
   }
   const setUser = (id: string, patch: Partial<(typeof db.users)[0]>) => {
     setDb({ ...db, users: db.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
   };
+  const pending = db.users.filter((u) => u.pending);
   return (
     <div>
-      <PageHead title="Administration" sub="Seul compte : drive.ia01@outlook.com — administration et coordination." />
+      <PageHead title="Administration" sub="Alerte à chaque profil en attente. Envoyez un accès avec la durée et les pages que vous choisissez." />
+      {pending.length ? (
+        <div className="panel">
+          <b>Nouveau profil</b>
+          <p>{pending.map((u) => u.email).join(", ")} attend votre autorisation.</p>
+        </div>
+      ) : null}
+      <div className="panel">
+        <h3>Envoyer un accès</h3>
+        <label>E-mail</label>
+        <input value={mail} onChange={(e) => setMail(e.target.value)} placeholder="personne@exemple.com" />
+        <label>Mot de passe provisoire</label>
+        <input value={pass} onChange={(e) => setPass(e.target.value)} placeholder="10 caractères, lettre et chiffre" />
+        <label>Durée en jours</label>
+        <input value={days} onChange={(e) => setDays(e.target.value)} />
+        <div className="toolbar">
+          {choices.map((c) => (
+            <label key={c} className="chip">
+              <input
+                type="checkbox"
+                checked={mods.includes(c)}
+                onChange={(e) => setMods(e.target.checked ? [...mods, c] : mods.filter((x) => x !== c))}
+              />{" "}
+              {c === "/" ? "Conversation" : c.slice(1)}
+            </label>
+          ))}
+        </div>
+        <button
+          className="btn btn-cyan"
+          onClick={async () => {
+            const email = mail.trim().toLowerCase();
+            if (!email || pass.length < 10) return flash("E-mail et mot de passe d’au moins 10 caractères.");
+            const accessUntil = Date.now() + Math.max(1, Number(days) || 30) * 86400000;
+            const user = { id: uid("u"), name: email.split("@")[0], email, password: pass, role: "user" as const, pending: false, accessUntil, modules: mods };
+            setDb({ ...db, users: [user, ...db.users.filter((u) => u.email !== email)] });
+            const text = `Accès HeuusssIAKDi\nhttps://heuusssiakdi.vercel.app\n${email}\nMot de passe : ${pass}\nJusqu’au ${new Date(accessUntil).toLocaleDateString()}\nPages : ${mods.join(", ")}`;
+            try { await navigator.clipboard.writeText(text); } catch { /* ignore */ }
+            if (navigator.share) { try { await navigator.share({ title: "Accès HeuusssIAKDi", text }); } catch { /* ignore */ } }
+            flash("Accès créé et texte copié. Envoyez-le à la personne.");
+            setMail("");
+            setPass("");
+          }}
+        >
+          Créer et envoyer l’accès
+        </button>
+      </div>
       <div className="list">
         {db.users.map((u) => (
           <div className="panel" key={u.id}>
             <b>{u.name}</b>
-            <div className="muted">{u.email} · {u.role}{u.pending ? " · en attente" : ""}{u.suspended ? " · suspendu" : ""}</div>
+            <div className="muted">{u.email} · {u.role}{u.pending ? " · en attente" : ""}{u.suspended ? " · suspendu" : ""}{u.accessUntil ? ` · jusqu’au ${new Date(u.accessUntil).toLocaleDateString()}` : ""}</div>
             <div className="toolbar" style={{ marginTop: 8 }}>
               {u.pending ? (
                 <button className="btn btn-cyan" onClick={() => { setUser(u.id, { pending: false }); flash("Accès autorisé."); }}>

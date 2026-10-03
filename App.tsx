@@ -15,6 +15,7 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/reseaux", label: "Réseaux sociaux" },
   { to: "/alertes", label: "Alertes" },
   { to: "/admin", label: "Administration" },
+  { to: "/sav", label: "SAV" },
 ];
 
 function pathToRoute(p: string): Route {
@@ -32,6 +33,42 @@ export default function App() {
   const [menu, setMenu] = useState(false);
 
   useEffect(() => save(db), [db]);
+  useEffect(() => {
+    const report = (title: string, detail: string) => {
+      const ticket = { id: uid("sav"), email: user?.email || "application", title, body: detail, at: Date.now(), status: "ouvert" as const };
+      setDb((prev) => ({ ...prev, tickets: [ticket, ...(prev.tickets || [])].slice(0, 30) }));
+      const text = `SAV automatique HeuusssIAKDi\n${title}\n\n${detail}`;
+      const frame = document.createElement("iframe");
+      frame.hidden = true;
+      frame.src = `mailto:drive.ia01@outlook.com?subject=${encodeURIComponent("SAV auto " + title)}&body=${encodeURIComponent(text.slice(0, 1500))}`;
+      document.body.appendChild(frame);
+      window.setTimeout(() => frame.remove(), 1500);
+      flash("Erreur envoyée au SAV.");
+    };
+    const onErr = (e: ErrorEvent) => report(e.message || "Erreur", `${e.filename || ""}:${e.lineno || 0}`);
+    const onReject = (e: PromiseRejectionEvent) => report("Promesse refusée", String(e.reason || "inconnue"));
+    window.addEventListener("error", onErr);
+    window.addEventListener("unhandledrejection", onReject);
+    return () => {
+      window.removeEventListener("error", onErr);
+      window.removeEventListener("unhandledrejection", onReject);
+    };
+  }, [user?.email]);
+  useEffect(() => {
+    const mark = document.querySelector("script[type='module']")?.getAttribute("src") || "";
+    const check = async () => {
+      try {
+        const html = await fetch("/?v=" + Date.now()).then((r) => r.text());
+        const next = html.match(/script[^>]+src="([^"]+)"/)?.[1] || "";
+        if (mark && next && next !== mark) flash("Mise à jour disponible. Rechargez l’application.");
+      } catch {
+        /* hors ligne */
+      }
+    };
+    void check();
+    const id = window.setInterval(check, 10 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
   useEffect(() => {
     const icon = document.querySelector<HTMLLinkElement>("link[rel='icon']") || document.createElement("link");
     icon.rel = "icon";
@@ -90,7 +127,9 @@ export default function App() {
         <div className="muted">{user.email}</div>
         <div className="muted">Compte {user.email === "drive.ia01@outlook.com" ? "prioritaire · admin · coordinatrice" : user.role === "master" ? "maître" : user.role === "admin" ? "admin" : "sécurisé"}</div>
         <nav className="nav">
-          {NAV.filter((n) => n.to !== "/admin" || user.role === "master" || user.role === "admin").map((n) => (
+          {NAV.filter((n) => n.to !== "/admin" || user.role === "master" || user.role === "admin")
+            .filter((n) => n.to === "/sav" || !user.modules?.length || user.modules.includes(n.to) || n.to === "/")
+            .map((n) => (
             <button key={n.to} className={route === n.to ? "on" : ""} onClick={() => go(n.to)}>
               {n.label}
             </button>
@@ -145,6 +184,11 @@ export default function App() {
           <div><small>{quoteApp.source}</small></div>
         </div>
         <Workspace route={route} db={db} setDb={setDb} flash={flash} go={go} />
+        {user.role !== "user" && db.users.some((u) => u.pending) ? (
+          <div className="toast" style={{ display: "block" }}>
+            Nouveau profil en attente : {db.users.filter((u) => u.pending).map((u) => u.email).join(", ")}. Ouvrez Administration.
+          </div>
+        ) : null}
       </main>
       {toast ? <div className="toast">{toast}</div> : null}
     </div>
@@ -219,6 +263,7 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
     const found = db.users.find((u) => u.email === mail && u.password === password);
     if (!found || found.suspended) { setErr("Identifiants invalides ou compte suspendu."); return; }
     if (found.pending) { setErr("Compte en attente d’autorisation administrateur."); return; }
+    if (found.accessUntil && found.accessUntil < Date.now()) { setErr("Accès expiré. Demandez une nouvelle autorisation."); return; }
     setDb({ ...db, sessionId: found.id });
   };
 

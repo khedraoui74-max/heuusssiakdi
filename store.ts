@@ -23,6 +23,8 @@ export type User = {
   role: Role;
   suspended?: boolean;
   pending?: boolean;
+  accessUntil?: number;
+  modules?: string[];
 };
 
 export type Message = { id: string; role: "user" | "assistant"; content: string; at: number };
@@ -106,6 +108,7 @@ export type DB = {
   socialPosts: SocialPost[];
   language: string;
   locked?: boolean;
+  tickets?: SupportTicket[];
   resetTokens: { email: string; token: string; exp: number }[];
 };
 
@@ -159,13 +162,15 @@ export function load(): DB {
       pending: false,
       suspended: false,
     };
+    const others = (parsed.users || []).filter((u) => u.email !== PRIORITY_ADMIN);
     return {
       ...structuredClone(seed),
       ...parsed,
-      users: [only],
-      sessionId: parsed.sessionId === "master-1" ? "master-1" : undefined,
+      users: [only, ...others],
+      sessionId: parsed.sessionId,
       socialAccounts: parsed.socialAccounts ?? [],
       socialPosts: parsed.socialPosts ?? [],
+      tickets: parsed.tickets ?? [],
     };
   } catch {
     return structuredClone(seed);
