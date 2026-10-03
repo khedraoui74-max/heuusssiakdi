@@ -156,6 +156,19 @@ export default function App() {
               Verrouiller
             </button>
           )}
+          {(user.role === "master" || user.role === "admin") && (
+            <button
+              onClick={async () => {
+                const text = "Mise à jour HeuusssIAKDi2.0 disponible. Ouvrez https://heuusssiakdi.vercel.app puis rechargez la page pour installer la nouvelle version.";
+                setDb({ ...db, tickets: [{ id: uid("maj"), email: "mise-a-jour", title: "Mise à jour envoyée", body: text, at: Date.now(), status: "ouvert" }, ...(db.tickets || [])] });
+                try { await navigator.clipboard.writeText(text); } catch { /* ignore */ }
+                if (navigator.share) { try { await navigator.share({ title: "Mise à jour HeuusssIAKDi", text }); } catch { /* ignore */ } }
+                flash("Avis de mise à jour copié. Envoyez-le, puis chacun recharge l’application.");
+              }}
+            >
+              Envoyer la mise à jour
+            </button>
+          )}
         </nav>
         <div className="side-meta">
           <div className="muted">Pensée du jour</div>
