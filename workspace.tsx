@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   ACCESS_CATALOG,
+  DEFAULT_LOOK,
   MODELS,
   SOCIAL_NETWORKS,
   type AlertItem,
@@ -52,8 +53,48 @@ export function Workspace({
   if (route === "/alertes") return <AlertsView db={db} setDb={setDb} flash={flash} />;
   if (route === "/admin") return <AdminView db={db} setDb={setDb} flash={flash} />;
   if (route === "/sav") return <SavView db={db} setDb={setDb} flash={flash} />;
+  if (route === "/presentation") return <LookView db={db} setDb={setDb} flash={flash} />;
   if (route === "/partage") return <ShareView db={db} />;
   return <div className="panel">L’espace n’a pas pu être affiché. Vous pouvez réessayer ou revenir à l’accueil.</div>;
+}
+
+function LookView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
+  const me = db.users.find((u) => u.id === db.sessionId);
+  const look = { ...DEFAULT_LOOK, ...(db.look || {}) };
+  const setLook = (patch: Partial<typeof look>) => setDb({ ...db, look: { ...look, ...patch } });
+  if (!me || (me.role !== "master" && me.role !== "admin")) return <div className="panel">Réservé au compte maître.</div>;
+  return (
+    <div>
+      <PageHead title="Présentation" sub="Page d’accueil : image, taille, police, couleurs, volets tournants et QCM. Puis envoyez la mise à jour." />
+      <div className="panel">
+        <label>Titre</label>
+        <input value={look.title} onChange={(e) => setLook({ title: e.target.value })} />
+        <label>Sous-titre</label>
+        <input value={look.subtitle} onChange={(e) => setLook({ subtitle: e.target.value })} />
+        <label>Couleur</label>
+        <input type="color" value={look.color} onChange={(e) => setLook({ color: e.target.value })} />
+        <label>Fond</label>
+        <input type="color" value={look.background} onChange={(e) => setLook({ background: e.target.value })} />
+        <label>Police</label>
+        <select value={look.font} onChange={(e) => setLook({ font: e.target.value })}>
+          <option value="DM Sans, system-ui, sans-serif">DM Sans</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="ui-monospace, monospace">Mono</option>
+        </select>
+        <label>Taille du titre ({look.titleSize})</label>
+        <input type="range" min={18} max={48} value={look.titleSize} onChange={(e) => setLook({ titleSize: Number(e.target.value) })} />
+        <label>Taille du logo ({look.logoSize})</label>
+        <input type="range" min={48} max={180} value={look.logoSize} onChange={(e) => setLook({ logoSize: Number(e.target.value) })} />
+        <label>Volets tournants, un par ligne</label>
+        <textarea value={look.slides.join("\n")} onChange={(e) => setLook({ slides: e.target.value.split("\n").filter(Boolean) })} />
+        <label>Question QCM</label>
+        <input value={look.quizQ} onChange={(e) => setLook({ quizQ: e.target.value })} />
+        <label>Réponses, la première est la bonne, une par ligne</label>
+        <textarea value={look.quiz.join("\n")} onChange={(e) => setLook({ quiz: e.target.value.split("\n").filter(Boolean), quizOk: 0 })} />
+        <button className="btn btn-ghost" onClick={() => { setDb({ ...db, look: DEFAULT_LOOK }); flash("Présentation d’origine."); }}>Revenir à l’origine</button>
+      </div>
+    </div>
+  );
 }
 
 function PageHead({ title, sub }: { title: string; sub: string }) {

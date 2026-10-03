@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LANGUAGES, load, quoteInApp, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
+import { DEFAULT_LOOK, LANGUAGES, load, quoteInApp, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
 import { Workspace } from "./workspace";
 import logoImg from "./logo.png";
 
@@ -16,6 +16,7 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/alertes", label: "Alertes" },
   { to: "/admin", label: "Administration" },
   { to: "/sav", label: "SAV" },
+  { to: "/presentation", label: "Présentation" },
 ];
 
 function pathToRoute(p: string): Route {
@@ -127,7 +128,7 @@ export default function App() {
         <div className="muted">{user.email}</div>
         <div className="muted">Compte {user.email === "drive.ia01@outlook.com" ? "prioritaire · admin · coordinatrice" : user.role === "master" ? "maître" : user.role === "admin" ? "admin" : "sécurisé"}</div>
         <nav className="nav">
-          {NAV.filter((n) => n.to !== "/admin" || user.role === "master" || user.role === "admin")
+          {NAV.filter((n) => (n.to !== "/admin" && n.to !== "/presentation") || user.role === "master" || user.role === "admin")
             .filter((n) => n.to === "/sav" || !user.modules?.length || user.modules.includes(n.to) || n.to === "/")
             .map((n) => (
             <button key={n.to} className={route === n.to ? "on" : ""} onClick={() => go(n.to)}>
@@ -253,6 +254,13 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
   const [name, setName] = useState("");
   const [show, setShow] = useState(false);
   const [err, setErr] = useState("");
+  const [slide, setSlide] = useState(0);
+  const [picked, setPicked] = useState<number | null>(null);
+  const look = { ...DEFAULT_LOOK, ...(db.look || {}) };
+  useEffect(() => {
+    const id = window.setInterval(() => setSlide((n) => (n + 1) % Math.max(1, look.slides.length)), 3500);
+    return () => window.clearInterval(id);
+  }, [look.slides.length]);
 
   const submit = () => {
     setErr("");
@@ -292,12 +300,19 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
           {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
         </select>
       </label>
-      <div className="auth-wrap">
+      <div className="auth-wrap" style={{ fontFamily: look.font, background: look.background }}>
         <div className="card">
-          <img src={logoImg} className="logo" alt="Logo HeuusssIAKDi — gants de boxe vintage" />
-          <div className="brand">HEUUSSSIAKDI2.0</div>
-          <h1>Conversation assistée</h1>
-          <div className="sub">Historique sécurisé</div>
+          <img src={logoImg} className="logo" alt="Logo HeuusssIAKDi — gants de boxe vintage" style={{ width: look.logoSize, height: look.logoSize }} />
+          <div className="brand" style={{ color: look.color, fontSize: look.titleSize }}>{look.title}</div>
+          <h1>{look.subtitle}</h1>
+          <div className="sub">{look.slides[slide % look.slides.length]}</div>
+          <div className="panel">
+            <b>{look.quizQ}</b>
+            {look.quiz.map((q, i) => (
+              <button key={q} className="chip" onClick={() => setPicked(i)}>{q}</button>
+            ))}
+            {picked != null ? <div className="muted">{picked === look.quizOk ? "Bonne réponse." : "À revoir."}</div> : null}
+          </div>
           {mode !== "forgot" && (
             <div className="tabs">
               <button className={mode === "login" ? "on" : ""} onClick={() => setMode("login")}>Se connecter</button>

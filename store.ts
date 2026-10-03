@@ -12,6 +12,8 @@ export type Route =
   | "/alertes"
   | "/reseaux"
   | "/admin"
+  | "/sav"
+  | "/presentation"
   | "/partage"
   | "/404";
 
@@ -171,6 +173,7 @@ export function load(): DB {
       socialAccounts: parsed.socialAccounts ?? [],
       socialPosts: parsed.socialPosts ?? [],
       tickets: parsed.tickets ?? [],
+      look: { ...DEFAULT_LOOK, ...(parsed.look || {}) },
     };
   } catch {
     return structuredClone(seed);
