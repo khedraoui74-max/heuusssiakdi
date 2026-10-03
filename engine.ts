@@ -584,13 +584,30 @@ export async function runEngine(opts: {
     onStep?.([...steps]);
   }
 
-  const remoteCall = ["groq", "openrouter", "hf"].includes(model) || model.startsWith("custom:") ? await callFreeModel(model, text) : { text: null as string | null };
-  const remote = remoteCall.text;
-  if ((["groq", "openrouter", "hf"].includes(model) || model.startsWith("custom:")) && !remote) {
-    push(step("model", "Groq / API indisponible", remoteCall.error || "Repli sur l’atelier local.", "pending"));
-  } else if (remote) {
-    push(step("model", "Réponse modèle gratuit", "Complétion reçue du fournisseur choisi."));
-  }
+  const keys = loadKeys();
+  const providers = [
+    keys.groq ? "groq" : "",
+    keys.openrouter ? "openrouter" : "",
+    keys.huggingface ? "hf" : "",
+    ...loadExtras().filter((a) => a.key && a.baseUrl && a.model).map((a) => `custom:${a.id}`),
+  ].filter(Boolean);
+  const asked = model.startsWith("custom:") || ["groq", "openrouter", "hf"].includes(model) ? model : "";
+  const all = [...new Set([asked, ...providers].filter(Boolean))];
+  const runningModels = step("model", "IA en parallèle", all.length ? all.join(", ") : "Aucune clé enregistrée — atelier local.", "run");
+  push(runningModels);
+  const calls = await Promise.all(
+    all.map(async (id) => {
+      const hit = await callFreeModel(id, text);
+      return { id, ...hit };
+    })
+  );
+  const ok = calls.filter((c) => c.text);
+  const remote = ok[0]?.text || null;
+  runningModels.status = ok.length ? "done" : "pending";
+  runningModels.detail = ok.length
+    ? `${ok.length} réponse(s) : ${ok.map((c) => c.id).join(", ")}. Réponse retenue : ${ok[0].id}.`
+    : calls.map((c) => c.error).filter(Boolean).join(" · ") || "Repli sur l’atelier local.";
+  onStep?.([...steps]);
 
   const artifacts: Artifact[] = files.map((f) => ({
     id: uid("a"),
@@ -603,6 +620,9 @@ export async function runEngine(opts: {
     ? "\n\nSources / portails web mondial :\n" + links.map((l) => `• ${l.title} — ${l.url}\n  ${l.snippet}`).join("\n")
     : "";
 
+  const extraBlock = ok.length > 1
+    ? "\n\nAutres IA :\n" + ok.slice(1).map((c) => `• ${c.id} — ${String(c.text).slice(0, 280)}`).join("\n")
+    : "";
   const fileBlock = files.length
     ? "\n\nFichiers générés :\n" + files.map((f) => `• ${f.path} (${langFromPath(f.path)})`).join("\n")
     : "";
@@ -620,7 +640,7 @@ ${
 }`;
 
   return {
-    reply: (remote || localReply) + sourceBlock + fileBlock,
+    reply: (remote || localReply) + extraBlock + sourceBlock + fileBlock,
     steps,
     files,
     app,
