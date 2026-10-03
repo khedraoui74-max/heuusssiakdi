@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LANGUAGES, load, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
+import { LANGUAGES, load, quoteInApp, quoteOfDay, resetDB, save, type DB, type Route, uid, validPassword } from "./store";
 import { Workspace } from "./workspace";
 import logoImg from "./logo.png";
 
@@ -33,6 +33,13 @@ export default function App() {
 
   useEffect(() => save(db), [db]);
   useEffect(() => {
+    const icon = document.querySelector<HTMLLinkElement>("link[rel='icon']") || document.createElement("link");
+    icon.rel = "icon";
+    icon.type = "image/png";
+    icon.href = logoImg;
+    if (!icon.parentElement) document.head.appendChild(icon);
+  }, []);
+  useEffect(() => {
     const onPop = () => setRoute(pathToRoute(location.pathname));
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -50,6 +57,16 @@ export default function App() {
 
   const user = db.users.find((u) => u.id === db.sessionId);
   const quote = quoteOfDay();
+  const quoteApp = quoteInApp();
+
+  if (db.locked) {
+    return (
+      <>
+        <LockView db={db} setDb={setDb} flash={flash} quote={quote} />
+        {toast ? <div className="toast">{toast}</div> : null}
+      </>
+    );
+  }
 
   if (!user) {
     return (
@@ -79,8 +96,32 @@ export default function App() {
             </button>
           ))}
           <button onClick={() => { setDb({ ...db, sessionId: undefined }); go("/"); }}>Se déconnecter</button>
+          <button
+            onClick={() => {
+              const token = uid("rst");
+              setDb({ ...db, sessionId: undefined, resetTokens: [...db.resetTokens, { email: user.email, token, exp: Date.now() + 30 * 60 * 1000 }] });
+              go("/reset-password", `/reset-password?token=${token}`);
+            }}
+          >
+            Changer le mot de passe
+          </button>
+          {(user.role === "master" || user.role === "admin") && (
+            <button
+              className="danger"
+              onClick={() => {
+                if (!window.confirm("Verrouiller l’application ? Personne ne pourra entrer tant que le compte maître n’aura pas rouvert.")) return;
+                setDb({ ...db, locked: true, sessionId: undefined });
+                flash("Application verrouillée.");
+              }}
+            >
+              Verrouiller
+            </button>
+          )}
         </nav>
         <div className="side-meta">
+          <div className="muted">Pensée du jour</div>
+          <div className="muted">« {quoteApp.text} »</div>
+          <div className="muted">{quoteApp.source}</div>
           <div className="muted">{db.conversations.filter((c) => !c.archived).length} conversations</div>
           <div className="muted">{db.apps.length} applications</div>
           <div className="muted">{db.connectors.filter((c) => c.active).length} accès actifs</div>
@@ -99,9 +140,51 @@ export default function App() {
           <button className="btn btn-ghost" style={{ width: "auto", margin: 0 }} onClick={() => setMenu((v) => !v)}>Menu</button>
           <b>HeuusssIAKDi2.0</b>
         </div>
+        <div className="top-quote">
+          <b>Dicton du jour</b> — « {quoteApp.text} »
+          <div><small>{quoteApp.source}</small></div>
+        </div>
         <Workspace route={route} db={db} setDb={setDb} flash={flash} go={go} />
       </main>
       {toast ? <div className="toast">{toast}</div> : null}
+    </div>
+  );
+}
+
+function LockView({ db, setDb, flash, quote }: { db: DB; setDb: (d: DB) => void; flash: (s: string) => void; quote: { text: string; source: string } }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const unlock = () => {
+    const mail = email.trim().toLowerCase();
+    const found = db.users.find((u) => u.email === mail && u.password === password && u.role === "master" && !u.suspended);
+    if (!found) {
+      setErr("Seul le compte maître peut rouvrir l’application.");
+      return;
+    }
+    setDb({ ...db, locked: false, sessionId: found.id });
+    flash("Application rouverte.");
+  };
+  return (
+    <div className="page">
+      <div className="top-quote">
+        <b>Pensée du jour</b> — « {quote.text} »
+        <div><small>{quote.source}</small></div>
+      </div>
+      <div className="auth-wrap">
+        <div className="card">
+          <img src={logoImg} className="logo" alt="Logo HeuusssIAKDi" />
+          <div className="brand">ACCÈS BLOQUÉ</div>
+          <h1>Application verrouillée</h1>
+          <div className="sub">Aucune connexion n’est acceptée. Seul le compte maître peut rouvrir.</div>
+          <label>E-mail maître</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="drive.ia01@outlook.com" />
+          <label>Mot de passe maître</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          {err ? <div className="err">{err}</div> : null}
+          <button className="btn btn-cyan" onClick={unlock}>Rouvrir</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -120,9 +203,8 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
     if (mode === "forgot") {
       const token = uid("rst");
       setDb({ ...db, resetTokens: [...db.resetTokens, { email: mail, token, exp: Date.now() + 30 * 60 * 1000 }] });
-      flash("Si l’adresse correspond à un compte, un lien valable 30 minutes a été créé.");
-      history.pushState({}, "", `/reset-password?token=${token}`);
-      go("/reset-password");
+      flash("Choisissez le nouveau mot de passe.");
+      go("/reset-password", `/reset-password?token=${token}`);
       return;
     }
     if (mode === "register") {
@@ -180,8 +262,6 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
           <button className="btn btn-cyan" onClick={submit}>{mode === "forgot" ? "Envoyer le lien" : mode === "register" ? "Créer un compte" : "Se connecter"}</button>
           {mode === "login" && <button className="link" onClick={() => setMode("forgot")}>Mot de passe oublié ?</button>}
           {mode === "forgot" && <button className="link" onClick={() => setMode("login")}>Retour à la connexion</button>}
-          <div className="or">ou</div>
-          <button className="btn btn-ghost" onClick={() => { const master = db.users.find((u) => u.email === "drive.ia01@outlook.com") ?? db.users.find((u) => u.role === "master") ?? db.users[0]; setDb({ ...db, sessionId: master.id }); }}>Entrer comme coordinatrice</button>
           <button
             className="link"
             onClick={() => {
