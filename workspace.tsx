@@ -17,9 +17,11 @@ import {
   APP_TEMPLATES,
   detectKind,
   generateProgram,
+  loadExtras,
   loadKeys,
   previewHtml,
   runEngine,
+  saveExtras,
   saveKeys,
   searchClearnet,
   type TraceStep,
@@ -79,6 +81,11 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
   const [tab, setTab] = useState<"journal" | "code" | "preview">("journal");
   const [keysOpen, setKeysOpen] = useState(false);
   const [keys, setKeys] = useState(loadKeys);
+  const [extras, setExtras] = useState(loadExtras);
+  const [aiName, setAiName] = useState("");
+  const [aiUrl, setAiUrl] = useState("https://api.groq.com/openai/v1");
+  const [aiModel, setAiModel] = useState("");
+  const [aiKey, setAiKey] = useState("");
   const conv = db.conversations.find((c) => c.id === cid) ?? db.conversations.find((c) => !c.archived);
   const list = db.conversations.filter((c) => !c.archived && c.title.toLowerCase().includes(q.toLowerCase()));
   const trace = liveTrace.length ? liveTrace : conv?.trace ?? [];
@@ -179,6 +186,11 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
                       {v.label}
                     </option>
                   ))}
+                  {extras.map((a) => (
+                    <option key={a.id} value={`custom:${a.id}`}>
+                      {a.name}
+                    </option>
+                  ))}
                 </select>
                 <button className="chip" onClick={() => setKeysOpen((v) => !v)}>
                   Clés IA
@@ -199,12 +211,44 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
                 className="btn btn-cyan"
                 onClick={() => {
                   saveKeys(keys);
-                  flash("Clés enregistrées localement.");
+                  saveExtras(extras);
+                  flash("Clés et IA enregistrées dans ce navigateur.");
                   setKeysOpen(false);
                 }}
               >
                 Enregistrer les clés
               </button>
+              <h3>Ajouter une IA</h3>
+              <p className="muted">Adresse compatible OpenAI (se termine souvent par /v1). La clé reste dans ce navigateur.</p>
+              <label>Nom</label>
+              <input value={aiName} onChange={(e) => setAiName(e.target.value)} placeholder="Mistral, Gemini, autre…" />
+              <label>Adresse</label>
+              <input value={aiUrl} onChange={(e) => setAiUrl(e.target.value)} placeholder="https://…/v1" />
+              <label>Modèle</label>
+              <input value={aiModel} onChange={(e) => setAiModel(e.target.value)} placeholder="nom exact du modèle" />
+              <label>Clé</label>
+              <input type="password" value={aiKey} onChange={(e) => setAiKey(e.target.value)} placeholder="clé API" />
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  if (!aiName.trim() || !aiUrl.trim() || !aiModel.trim() || !aiKey.trim()) return flash("Nom, adresse, modèle et clé sont requis.");
+                  const next = [...extras, { id: uid("ai"), name: aiName.trim(), baseUrl: aiUrl.trim(), model: aiModel.trim(), key: aiKey.trim() }];
+                  setExtras(next);
+                  saveExtras(next);
+                  setAiName("");
+                  setAiModel("");
+                  setAiKey("");
+                  flash("IA ajoutée. Choisis-la dans la liste.");
+                }}
+              >
+                Ajouter cette IA
+              </button>
+              {extras.map((a) => (
+                <div className="item" key={a.id}>
+                  <span>{a.name} · {a.model}</span>
+                  <button className="danger" onClick={() => { const next = extras.filter((x) => x.id !== a.id); setExtras(next); saveExtras(next); }}>Retirer</button>
+                </div>
+              ))}
             </div>
           )}
           <div className="list conv-strip">

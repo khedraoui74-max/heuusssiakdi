@@ -51,6 +51,20 @@ export function loadKeys() {
   }
 }
 
+export type ExtraAI = { id: string; name: string; baseUrl: string; model: string; key: string };
+
+export function loadExtras(): ExtraAI[] {
+  try {
+    return JSON.parse(localStorage.getItem("heuusssiakdi-ais") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function saveExtras(list: ExtraAI[]) {
+  localStorage.setItem("heuusssiakdi-ais", JSON.stringify(list));
+}
+
 export function saveKeys(k: ReturnType<typeof loadKeys>) {
   const clean = {
     groq: k.groq?.trim() || undefined,
@@ -390,6 +404,26 @@ type ModelCall = { text: string | null; error?: string };
 async function callFreeModel(provider: string, prompt: string): Promise<ModelCall> {
   const keys = loadKeys();
   try {
+  if (provider.startsWith("custom:")) {
+      const extra = loadExtras().find((a) => a.id === provider.slice(7));
+      if (!extra?.key || !extra.baseUrl || !extra.model) return { text: null, error: "IA ajoutée incomplète : nom, adresse, modèle et clé." };
+      const root = extra.baseUrl.replace(/\/$/, "");
+      const res = await fetch(`${root}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${extra.key}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(20000),
+        body: JSON.stringify({
+          model: extra.model,
+          messages: [
+            { role: "system", content: "Assistant francophone utile et précis." },
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const text = data?.choices?.[0]?.message?.content;
+      return text ? { text } : { text: null, error: data?.error?.message || `IA ajoutée : HTTP ${res.status}` };
+    }
     if (provider === "groq") {
       if (!keys.groq) return { text: null, error: "Aucune clé Groq enregistrée. Ouvre Clés IA, colle gsk_… puis Enregistrer." };
       const models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.1-8b-instant"];
@@ -550,9 +584,9 @@ export async function runEngine(opts: {
     onStep?.([...steps]);
   }
 
-  const remoteCall = ["groq", "openrouter", "hf"].includes(model) ? await callFreeModel(model, text) : { text: null as string | null };
+  const remoteCall = ["groq", "openrouter", "hf"].includes(model) || model.startsWith("custom:") ? await callFreeModel(model, text) : { text: null as string | null };
   const remote = remoteCall.text;
-  if (["groq", "openrouter", "hf"].includes(model) && !remote) {
+  if ((["groq", "openrouter", "hf"].includes(model) || model.startsWith("custom:")) && !remote) {
     push(step("model", "Groq / API indisponible", remoteCall.error || "Repli sur l’atelier local.", "pending"));
   } else if (remote) {
     push(step("model", "Réponse modèle gratuit", "Complétion reçue du fournisseur choisi."));

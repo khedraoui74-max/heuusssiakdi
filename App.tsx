@@ -169,7 +169,7 @@ function LockView({ db, setDb, flash, quote }: { db: DB; setDb: (d: DB) => void;
           <h1>Application verrouillée</h1>
           <div className="sub">Aucune connexion n’est acceptée. Seul le compte maître peut rouvrir.</div>
           <label>E-mail maître</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="drive.ia01@outlook.com" />
           <label>Mot de passe maître</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {err ? <div className="err">{err}</div> : null}

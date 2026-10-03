@@ -40,7 +40,7 @@ export type Conversation = {
   title: string;
   archived?: boolean;
   projectId?: string;
-  model: "qwen27" | "blockia" | "openrouter" | "local" | "groq" | "hf";
+  model: string;
   webSearch?: boolean;
   messages: Message[];
   trace?: TraceStep[];
