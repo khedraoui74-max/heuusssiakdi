@@ -14,6 +14,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.addEventListener("error", (e) => {
+        const r = document.getElementById("root");
+        if (r && !r.textContent) r.textContent = "Erreur d’affichage : " + (e.message || "inconnue");
+      });
+    </script>
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>
