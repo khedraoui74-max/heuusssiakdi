@@ -93,6 +93,33 @@ export type SocialPost = {
   at: number;
 };
 
+export type SupportTicket = { id: string; email: string; title: string; body: string; at: number; status: "ouvert" | "vu" };
+export type Look = {
+  title: string;
+  subtitle: string;
+  color: string;
+  background: string;
+  font: string;
+  titleSize: number;
+  logoSize: number;
+  slides: string[];
+  quizQ: string;
+  quiz: string[];
+  quizOk: number;
+};
+export const DEFAULT_LOOK: Look = {
+  title: "HEUUSSSIAKDI2.0",
+  subtitle: "Conversation assistée",
+  color: "#7ee7f0",
+  background: "#0b0f12",
+  font: "DM Sans, system-ui, sans-serif",
+  titleSize: 28,
+  logoSize: 96,
+  slides: ["Pensée et dicton du jour", "Chat, journal et aperçu", "Projets, réseaux et SAV"],
+  quizQ: "À quoi sert l’atelier local ?",
+  quiz: ["Répondre sans clé", "Envoyer sur TikTok", "Ouvrir le dark web"],
+  quizOk: 0,
+};
 export type DB = {
   users: User[];
   sessionId?: string;
@@ -111,6 +138,7 @@ export type DB = {
   language: string;
   locked?: boolean;
   tickets?: SupportTicket[];
+  look?: Look;
   resetTokens: { email: string; token: string; exp: number }[];
 };
 
