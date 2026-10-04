@@ -213,7 +213,7 @@ export function save(db: DB) {
 }
 
 export function uid(prefix = "id") {
-  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+  return `\( {prefix}- \){Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function validPassword(p: string) {
@@ -331,5 +331,5 @@ export function assistantReply(text: string, model: string, web: boolean) {
         ? "Catalogue OpenRouter : réponse générée localement en attendant la clé serveur."
         : "Réponse directe.";
   const search = web ? " Recherche web activée : sources à vérifier côté serveur." : "";
-  return `${tone}${search}\n\nVous avez demandé : « ${text} ».\n\nHeuusssIAKDi2.0 reprend votre espace privé : conversation, projets, artefacts, alertes, studio et générateur. Les actions sensibles restent confirmées avant publication.`;
+  return `\( {tone} \){search}\n\nVous avez demandé : « ${text} ».\n\nHeuusssIAKDi2.0 reprend votre espace privé : conversation, projets, artefacts, alertes, studio et générateur. Les actions sensibles restent confirmées avant publication.`;
 }
