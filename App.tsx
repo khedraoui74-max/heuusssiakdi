@@ -32,8 +32,40 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => pathToRoute(location.pathname));
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
+  const [dark, setDark] = useState(() => localStorage.getItem("heuusssiakdi-theme") !== "light");
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", !dark);
+    localStorage.setItem("heuusssiakdi-theme", dark ? "dark" : "light");
+  }, [dark]);
 
   useEffect(() => save(db), [db]);
+  useEffect(() => {
+    const icon = document.querySelector<HTMLLinkElement>("link[rel='icon']") || document.createElement("link");
+    icon.rel = "icon";
+    icon.type = "image/png";
+    icon.href = logoImg;
+    if (!icon.parentElement) document.head.appendChild(icon);
+  }, []);
+  useEffect(() => {
+    const onPop = () => setRoute(pathToRoute(location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const go = (to: Route, path?: string) => {
+    history.pushState({}, "", path ?? to);
+    setRoute(to);
+    setMenu(false);
+  };
+  const flash = (m: string) => {
+    setToast(m);
+    window.setTimeout(() => setToast(""), 2600);
+  };
+
+  const user = db.users.find((u) => u.id === db.sessionId);
+  const quote = quoteOfDay();
+  const quoteApp = quoteInApp();
+
   useEffect(() => {
     const report = (title: string, detail: string) => {
       const ticket = { id: uid("sav"), email: user?.email || "application", title, body: detail, at: Date.now(), status: "ouvert" as const };
@@ -70,32 +102,6 @@ export default function App() {
     const id = window.setInterval(check, 10 * 60 * 1000);
     return () => window.clearInterval(id);
   }, []);
-  useEffect(() => {
-    const icon = document.querySelector<HTMLLinkElement>("link[rel='icon']") || document.createElement("link");
-    icon.rel = "icon";
-    icon.type = "image/png";
-    icon.href = logoImg;
-    if (!icon.parentElement) document.head.appendChild(icon);
-  }, []);
-  useEffect(() => {
-    const onPop = () => setRoute(pathToRoute(location.pathname));
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  const go = (to: Route, path?: string) => {
-    history.pushState({}, "", path ?? to);
-    setRoute(to);
-    setMenu(false);
-  };
-  const flash = (m: string) => {
-    setToast(m);
-    window.setTimeout(() => setToast(""), 2600);
-  };
-
-  const user = db.users.find((u) => u.id === db.sessionId);
-  const quote = quoteOfDay();
-  const quoteApp = quoteInApp();
 
   if (db.locked) {
     return (
@@ -112,7 +118,7 @@ export default function App() {
         {route === "/reset-password" ? (
           <ResetView db={db} setDb={setDb} flash={flash} goHome={() => go("/")} />
         ) : (
-          <AuthView db={db} setDb={setDb} flash={flash} go={go} quote={quote} />
+          <AuthView db={db} setDb={setDb} flash={flash} go={go} quote={quote} dark={dark} setDark={setDark} />
         )}
         {toast ? <div className="toast">{toast}</div> : null}
       </>
@@ -135,6 +141,7 @@ export default function App() {
               {n.label}
             </button>
           ))}
+          <button onClick={() => setDark((v) => !v)}>{dark ? "Mode clair" : "Mode sombre"}</button>
           <button onClick={() => { setDb({ ...db, sessionId: undefined }); go("/"); }}>Se déconnecter</button>
           <button
             onClick={() => {
@@ -247,7 +254,7 @@ function LockView({ db, setDb, flash, quote }: { db: DB; setDb: (d: DB) => void;
   );
 }
 
-function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => void; flash: (s: string) => void; go: (r: Route) => void; quote: { text: string; source: string } }) {
+function AuthView({ db, setDb, flash, go, quote, dark, setDark }: { db: DB; setDb: (d: DB) => void; flash: (s: string) => void; go: (r: Route, path?: string) => void; quote: { text: string; source: string }; dark: boolean; setDark: (v: boolean | ((b: boolean) => boolean)) => void }) {
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -299,6 +306,7 @@ function AuthView({ db, setDb, flash, go, quote }: { db: DB; setDb: (d: DB) => v
         <select value={db.language} onChange={(e) => setDb({ ...db, language: e.target.value })}>
           {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
         </select>
+        <button type="button" onClick={() => setDark((v) => !v)}>{dark ? "Mode clair" : "Mode sombre"}</button>
       </label>
       <div className="auth-wrap" style={{ fontFamily: look.font, background: look.background }}>
         <div className="card">

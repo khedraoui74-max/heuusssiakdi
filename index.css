@@ -17,7 +17,17 @@ a { color: var(--cyan); }
   padding: 10px 20px;
   font-size: 13px;
 }
-.top-quote small { color: var(--muted); }
+html.light {
+  --bg: #f4f7f8;
+  --card: #ffffff;
+  --line: rgba(0, 0, 0, 0.08);
+  --text: #142026;
+  --muted: #5d6b73;
+  --cyan: #0e7490;
+  --cyan-2: #155e75;
+}
+html.light .card, html.light .lang, html.light .side { background: #fff; color: var(--text); }
+html.light .tabs, html.light input, html.light textarea, html.light select { background: #f7fafb; }
 .lang {
   position: absolute; top: 18px; right: 18px;
   display: flex; align-items: center; gap: 8px;

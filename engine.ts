@@ -51,7 +51,7 @@ export function loadKeys() {
   }
 }
 
-export type ExtraAI = { id: string; name: string; baseUrl: string; model: string; key: string };
+const RULE = "Règle fixe pour chaque demande : réponds en français, de façon courte et précise. Si tu n’es pas sûr, dis-le. N’invente pas de source. Refuse les activités illégales, le dark web et Tor.";
 
 export function loadExtras(): ExtraAI[] {
   try {
@@ -415,7 +415,7 @@ async function callFreeModel(provider: string, prompt: string): Promise<ModelCal
         body: JSON.stringify({
           model: extra.model,
           messages: [
-            { role: "system", content: "Assistant francophone utile et précis." },
+            { role: "system", content: RULE },
             { role: "user", content: prompt },
           ],
         }),
@@ -436,7 +436,7 @@ async function callFreeModel(provider: string, prompt: string): Promise<ModelCal
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: "Assistant francophone utile et précis. Réponds directement. Refuse les activités illégales." },
+              { role: "system", content: RULE },
               { role: "user", content: prompt },
             ],
             temperature: 0.4,
@@ -461,7 +461,7 @@ async function callFreeModel(provider: string, prompt: string): Promise<ModelCal
         body: JSON.stringify({
           model: "meta-llama/llama-3.2-3b-instruct:free",
           messages: [
-            { role: "system", content: "Assistant technique francophone. Refuse les activités illégales." },
+            { role: "system", content: RULE },
             { role: "user", content: prompt },
           ],
         }),
