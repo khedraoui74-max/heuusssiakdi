@@ -18,7 +18,6 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/sav", label: "SAV" },
   { to: "/android", label: "Android" },
   { to: "/presentation", label: "Présentation" },
-  { to: "/android", label: "Android" },
 ];
 
 function pathToRoute(p: string): Route {
@@ -137,7 +136,7 @@ export default function App() {
         <div className="muted">Compte {user.email === "drive.ia01@outlook.com" ? "prioritaire · admin · coordinatrice" : user.role === "master" ? "maître" : user.role === "admin" ? "admin" : "sécurisé"}</div>
         <nav className="nav">
           {NAV.filter((n) => (n.to !== "/admin" && n.to !== "/presentation") || user.role === "master" || user.role === "admin")
-            .filter((n) => n.to === "/sav" || !user.modules?.length || user.modules.includes(n.to) || n.to === "/")
+            .filter((n) => user.role === "master" || user.role === "admin" || n.to === "/sav" || n.to === "/android" || !user.modules?.length || user.modules.includes(n.to) || n.to === "/")
             .map((n) => (
             <button key={n.to} className={route === n.to ? "on" : ""} onClick={() => go(n.to)}>
               {n.label}

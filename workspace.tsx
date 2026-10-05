@@ -55,7 +55,6 @@ export function Workspace({
   if (route === "/sav") return <SavView db={db} setDb={setDb} flash={flash} />;
   if (route === "/android") return <AndroidView />;
   if (route === "/presentation") return <LookView db={db} setDb={setDb} flash={flash} />;
-  if (route === "/android") return <AndroidView />;
   if (route === "/partage") return <ShareView db={db} />;
   return <div className="panel">L’espace n’a pas pu être affiché. Vous pouvez réessayer ou revenir à l’accueil.</div>;
 }
@@ -1213,23 +1212,6 @@ function ShareView({ db }: { db: DB }) {
   );
 }
 
-function AndroidView() {
-  return (
-    <div className="page">
-      <PageHead title="Android" sub="Application hors Play Store. Elle ouvre ce site." />
-      <div className="card">
-        <p>Le kit Android sert à construire le fichier. Il n’est pas dans le navigateur : il est dans le projet, et le fichier installable est prêt.</p>
-        <a className="btn btn-cyan" href="/HeuusssIAKDi.apk" download>Télécharger HeuusssIAKDi.apk</a>
-        <ol>
-          <li>Envoie le fichier sur le téléphone.</li>
-          <li>Ouvre-le et autorise l’installation.</li>
-          <li>L’icône HeuusssIAKDi ouvre l’application.</li>
-        </ol>
-      </div>
-    </div>
-  );
-}
-
 function SavView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
   const me = db.users.find((u) => u.id === db.sessionId);
   const [title, setTitle] = useState("");
@@ -1279,7 +1261,7 @@ function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateActio
   const [pass, setPass] = useState("");
   const [days, setDays] = useState("30");
   const [mods, setMods] = useState<string[]>(["/", "/projets"]);
-  const choices = ["/", "/historique", "/projets", "/creer-application", "/reseaux", "/alertes", "/studio-video"];
+  const choices = ["/", "/historique", "/projets", "/artefacts", "/connecteurs", "/ia-personnelle", "/creer-application", "/reseaux", "/alertes", "/studio-video", "/android", "/sav"];
   if (!me || (me.role !== "master" && me.role !== "admin")) {
     return <div className="panel">Accès réservé aux administrateurs.</div>;
   }
@@ -1305,6 +1287,7 @@ function AdminView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateActio
         <label>Durée en jours</label>
         <input value={days} onChange={(e) => setDays(e.target.value)} />
         <div className="toolbar">
+          <button className="chip" onClick={() => setMods(choices)}>Toutes les habilitations</button>
           {choices.map((c) => (
             <label key={c} className="chip">
               <input
