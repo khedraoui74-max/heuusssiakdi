@@ -53,9 +53,28 @@ export function Workspace({
   if (route === "/alertes") return <AlertsView db={db} setDb={setDb} flash={flash} />;
   if (route === "/admin") return <AdminView db={db} setDb={setDb} flash={flash} />;
   if (route === "/sav") return <SavView db={db} setDb={setDb} flash={flash} />;
+  if (route === "/android") return <AndroidView />;
   if (route === "/presentation") return <LookView db={db} setDb={setDb} flash={flash} />;
+  if (route === "/android") return <AndroidView />;
   if (route === "/partage") return <ShareView db={db} />;
   return <div className="panel">L’espace n’a pas pu être affiché. Vous pouvez réessayer ou revenir à l’accueil.</div>;
+}
+
+function AndroidView() {
+  return (
+    <div>
+      <PageHead title="Kit Android" sub="Application hors Play Store. Elle ouvre HeuusssIAKDi dans une fenêtre Android." />
+      <div className="panel">
+        <p>Le kit est le fichier HeuusssIAKDi.apk. Il n’est pas sur le Play Store.</p>
+        <a className="btn btn-cyan" href="/HeuusssIAKDi.apk" download>Télécharger le kit Android</a>
+        <ol>
+          <li>Télécharge le fichier sur le téléphone.</li>
+          <li>Ouvre-le. Si Android bloque, autorise cette source.</li>
+          <li>L’icône HeuusssIAKDi s’installe et ouvre le site.</li>
+        </ol>
+      </div>
+    </div>
+  );
 }
 
 function LookView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction<DB>>; flash: (s: string) => void }) {
@@ -1190,6 +1209,23 @@ function ShareView({ db }: { db: DB }) {
       <h3>{project.name}</h3>
       <p className="muted">Lecture seule · jeton {share.token}</p>
       <p>{project.note || "Aucune note."}</p>
+    </div>
+  );
+}
+
+function AndroidView() {
+  return (
+    <div className="page">
+      <PageHead title="Android" sub="Application hors Play Store. Elle ouvre ce site." />
+      <div className="card">
+        <p>Le kit Android sert à construire le fichier. Il n’est pas dans le navigateur : il est dans le projet, et le fichier installable est prêt.</p>
+        <a className="btn btn-cyan" href="/HeuusssIAKDi.apk" download>Télécharger HeuusssIAKDi.apk</a>
+        <ol>
+          <li>Envoie le fichier sur le téléphone.</li>
+          <li>Ouvre-le et autorise l’installation.</li>
+          <li>L’icône HeuusssIAKDi ouvre l’application.</li>
+        </ol>
+      </div>
     </div>
   );
 }

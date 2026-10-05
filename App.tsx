@@ -16,7 +16,9 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/alertes", label: "Alertes" },
   { to: "/admin", label: "Administration" },
   { to: "/sav", label: "SAV" },
+  { to: "/android", label: "Android" },
   { to: "/presentation", label: "Présentation" },
+  { to: "/android", label: "Android" },
 ];
 
 function pathToRoute(p: string): Route {
@@ -313,7 +315,7 @@ function AuthView({ db, setDb, flash, go, quote, dark, setDark }: { db: DB; setD
           <img src={logoImg} className="logo" alt="Logo HeuusssIAKDi — gants de boxe vintage" style={{ width: look.logoSize, height: look.logoSize }} />
           <div className="brand" style={{ color: look.color, fontSize: look.titleSize }}>{look.title}</div>
           <h1>{look.subtitle}</h1>
-          <div className="sub">{look.slides[slide % look.slides.length]}</div>
+          <div className="sub">{(look.slides && look.slides.length ? look.slides : ["Conversation assistée"])[slide % Math.max(1, look.slides?.length || 1)]}</div>
           <div className="panel">
             <b>{look.quizQ}</b>
             {look.quiz.map((q, i) => (
