@@ -444,7 +444,7 @@ function ChatView({ db, setDb, flash }: { db: DB; setDb: Dispatch<SetStateAction
 
 function Hub({ go, db }: { go: (r: Route) => void; db: DB }) {
   const cards: [string, string, string, Route][] = [
-    ["Conversation", `${db.conversations.filter((c) => !c.archived).length} fils`, "Journal, code, aperçu.", "/"],
+    ["Espace de travail IA", `${db.conversations.filter((c) => !c.archived).length} fils`, "Journal, code, aperçu.", "/"],
     ["Projets", `${db.projects.length} projets`, "Pack code, artefacts, clés, connecteurs.", "/projets"],
     ["Historique", `${db.requests.length} demandes`, "Conversations archivées et partages.", "/historique"],
     ["Applications", `${db.apps.length} prototypes`, "Modèles + aperçu live.", "/creer-application"],

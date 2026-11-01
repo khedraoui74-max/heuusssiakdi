@@ -4,7 +4,6 @@ import { Workspace } from "./workspace";
 import logoImg from "./logo.png";
 
 const NAV: { to: Route; label: string }[] = [
-  { to: "/", label: "Conversation" },
   { to: "/ia-personnelle", label: "IA personnelle" },
   { to: "/historique", label: "Historique" },
   { to: "/projets", label: "Projets" },
@@ -18,6 +17,7 @@ const NAV: { to: Route; label: string }[] = [
   { to: "/sav", label: "SAV" },
   { to: "/android", label: "Android" },
   { to: "/presentation", label: "Présentation" },
+  { to: "/", label: "Espace de travail IA" },
 ];
 
 function pathToRoute(p: string): Route {
@@ -212,6 +212,7 @@ export default function App() {
           </div>
         ) : null}
       </main>
+      <button className="bottom-ia" onClick={() => go("/")}>Espace de travail IA</button>
       {toast ? <div className="toast">{toast}</div> : null}
     </div>
   );

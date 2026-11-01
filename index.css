@@ -69,7 +69,22 @@ input, textarea, select.field {
 .nav { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
 .nav button { text-align: left; background: transparent; border: 0; color: #d5dee3; padding: 9px 10px; border-radius: 10px; cursor: pointer; }
 .nav button.on { background: #182026; }
-.main { padding: 18px 22px 40px; }
+.main { padding: 18px 22px 72px; }
+.bottom-ia {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 15;
+  background: var(--cyan);
+  color: #062026;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
 .chip { background: #151c20; border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 12px; }
 .workbench { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 16px; align-items: start; }
